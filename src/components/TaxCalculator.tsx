@@ -30,6 +30,8 @@ interface TaxCalculatorProps {
   isOnline: boolean;
   isLoggedIn: boolean;
   currency: "USD" | "ETB";
+  showToast: (message: string, type?: "success" | "info" | "error") => void;
+  onConfirmDialog: (title: string, description: string, onConfirm: () => void, actionText?: string) => void;
 }
 
 const ETB_TO_USD_RATE = 120; // 1 USD = 120 ETB standard exchange rate for calculations
@@ -41,6 +43,8 @@ export function TaxCalculator({
   isOnline,
   isLoggedIn,
   currency,
+  showToast,
+  onConfirmDialog,
 }: TaxCalculatorProps) {
   // Inputs
   const [title, setTitle] = useState("Salary Calculation");
@@ -226,20 +230,20 @@ export function TaxCalculator({
         setHistory(updated);
         saveHistoryLocally(updated);
       }
-      alert("Tax calculation log saved successfully!");
+      showToast("Tax calculation log saved successfully!", "success");
     } catch (err) {
       console.error("Failed to save tax record:", err);
       const localRecord = { ...newRecord, id: Math.random().toString(36).substring(2, 9) };
       const updated = [localRecord, ...history];
       setHistory(updated);
       saveHistoryLocally(updated);
-      alert("Saved locally (offline mode)");
+      showToast("Saved locally (offline mode)", "success");
     }
   };
 
   const handleLogAsIncome = () => {
     if (!isLoggedIn) {
-      alert("Authentication Required: Please sign in from the sidebar to log this take-home salary into your expense ledger.");
+      showToast("Authentication Required: Please sign in from the sidebar.", "error");
       return;
     }
 
@@ -260,25 +264,32 @@ export function TaxCalculator({
       ? `Net Take-Home logged as ${formatCurrency(finalAmount, "USD")} (Converted from ${results.netPay.toLocaleString()} ETB at 1 USD = ${ETB_TO_USD_RATE} ETB).`
       : `Net Take-Home logged as ${results.netPay.toLocaleString()} ETB.`;
 
-    alert(message);
+    showToast(message, "success");
   };
 
-  const handleDeleteRecord = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this tax record?")) return;
-
-    try {
-      if (isOnline) {
-        await fetch(`${serverUrl}/tax-calculations/${id}`, { method: "DELETE" });
-      }
-      const updated = history.filter((h) => h.id !== id);
-      setHistory(updated);
-      saveHistoryLocally(updated);
-    } catch (err) {
-      console.error("Failed to delete record:", err);
-      const updated = history.filter((h) => h.id !== id);
-      setHistory(updated);
-      saveHistoryLocally(updated);
-    }
+  const handleDeleteRecord = (id: string) => {
+    onConfirmDialog(
+      "Delete Tax Record",
+      "Are you sure you want to delete this saved tax calculation log?",
+      async () => {
+        try {
+          if (isOnline) {
+            await fetch(`${serverUrl}/tax-calculations/${id}`, { method: "DELETE" });
+          }
+          const updated = history.filter((h) => h.id !== id);
+          setHistory(updated);
+          saveHistoryLocally(updated);
+          showToast("Tax record deleted successfully.", "success");
+        } catch (err) {
+          console.error("Failed to delete record:", err);
+          const updated = history.filter((h) => h.id !== id);
+          setHistory(updated);
+          saveHistoryLocally(updated);
+          showToast("Deleted locally (offline).", "success");
+        }
+      },
+      "Delete"
+    );
   };
 
   return (
