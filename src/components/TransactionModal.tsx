@@ -137,7 +137,7 @@ export function TransactionModal({
                 placeholder="Rent, Grocery, Side job..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className={errors.title ? "border-red-500 focus-visible:ring-red-500/20" : ""}
+                className={`pl-10 ${errors.title ? "border-red-500 focus-visible:ring-red-500/20" : ""}`}
               />
             </div>
             {errors.title && <p className="text-xs text-red-550 font-semibold">{errors.title}</p>}
@@ -155,7 +155,7 @@ export function TransactionModal({
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className={errors.amount ? "border-red-550 focus-visible:ring-red-500/20" : ""}
+                  className={`pl-10 ${errors.amount ? "border-red-500 focus-visible:ring-red-500/20" : ""}`}
                 />
               </div>
               {errors.amount && <p className="text-xs text-red-550 font-semibold">{errors.amount}</p>}
@@ -171,7 +171,7 @@ export function TransactionModal({
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className={errors.date ? "border-red-550 focus-visible:ring-red-500/20" : ""}
+                  className={`pl-10 ${errors.date ? "border-red-500 focus-visible:ring-red-500/20" : ""}`}
                 />
               </div>
               {errors.date && <p className="text-xs text-red-500 font-semibold">{errors.date}</p>}
