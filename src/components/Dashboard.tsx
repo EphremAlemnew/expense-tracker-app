@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import { Wallet, TrendingUp, TrendingDown, Target, AlertCircle } from "lucide-react";
-import { formatCurrency, EXPENSE_CATEGORIES, getCategoryInfo } from "../utils/financeUtils";
-import type { Transaction, Budget } from "../utils/financeUtils";
+import { formatCurrency, getCategoryInfo } from "../utils/financeUtils";
+import type { Transaction, Budget, CategoryInfo } from "../utils/financeUtils";
 import { Card, CardContent } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { Button } from "./ui/button";
@@ -12,9 +12,18 @@ interface DashboardProps {
   budgets: Budget[];
   onNavigateToTab: (tab: "transactions" | "budgets") => void;
   isDarkMode: boolean;
+  categories: CategoryInfo[];
+  currency: "USD" | "ETB";
 }
 
-export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }: DashboardProps) {
+export function Dashboard({
+  transactions,
+  budgets,
+  onNavigateToTab,
+  isDarkMode,
+  categories,
+  currency,
+}: DashboardProps) {
   // 1. Math Aggregations
   const stats = useMemo(() => {
     let income = 0;
@@ -30,7 +39,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
     };
   }, [transactions]);
 
-  // 2. Expenses grouped by Category
+  // 2. Expenses grouped by Category (using dynamic categories list)
   const expenseByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     transactions
@@ -39,12 +48,13 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
         map[t.category] = (map[t.category] || 0) + t.amount;
       });
 
-    return EXPENSE_CATEGORIES.map((cat) => ({
+    const expenseCats = categories.filter((c) => c.type === "expense");
+    return expenseCats.map((cat) => ({
       name: cat.label,
       value: map[cat.id] || 0,
       color: cat.color,
     })).filter((item) => item.value > 0);
-  }, [transactions]);
+  }, [transactions, categories]);
 
   // 3. Daily Spending Trend (Last 7 active days)
   const spendingTrend = useMemo(() => {
@@ -77,7 +87,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
     return budgets
       .map((b) => {
         const spent = expenseMap[b.category] || 0;
-        const catInfo = getCategoryInfo(b.category, "expense");
+        const catInfo = getCategoryInfo(b.category, "expense", categories);
         const pct = b.limit > 0 ? (spent / b.limit) * 100 : 0;
         return {
           category: catInfo.label,
@@ -87,7 +97,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
         };
       })
       .filter((item) => item.percent >= 80);
-  }, [transactions, budgets]);
+  }, [transactions, budgets, categories]);
 
   // 5. ECharts Options
   const categoryChartOption = useMemo(() => {
@@ -99,7 +109,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
     return {
       tooltip: {
         trigger: "item",
-        formatter: "{b}: <b>${c}</b> ({d}%)",
+        formatter: `{b}: <b>{c} ${currency}</b> ({d}%)`,
         backgroundColor: isDarkMode ? "#18181b" : "#ffffff",
         borderColor: isDarkMode ? "#27272a" : "#e4e4e7",
         textStyle: {
@@ -110,7 +120,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
         orient: "vertical",
         left: "left",
         textStyle: textStyle,
-        show: expenseByCategory.length < 8,
+        show: expenseByCategory.length < 6,
       },
       series: [
         {
@@ -123,22 +133,17 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
             borderColor: isDarkMode ? "#0c0c12" : "#ffffff",
             borderWidth: 2,
           },
-          label: {
-            show: false,
-            position: "center",
-          },
+          label: { show: false, position: "center" },
           emphasis: {
             label: {
               show: true,
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: "bold",
-              formatter: "{b}\n${c}",
+              formatter: `{b}\n{c} ${currency}`,
               color: isDarkMode ? "#ffffff" : "#000000",
             },
           },
-          labelLine: {
-            show: false,
-          },
+          labelLine: { show: false },
           data: expenseByCategory.map((item) => ({
             name: item.name,
             value: item.value,
@@ -147,7 +152,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
         },
       ],
     };
-  }, [expenseByCategory, isDarkMode]);
+  }, [expenseByCategory, isDarkMode, currency]);
 
   const trendChartOption = useMemo(() => {
     const textColor = isDarkMode ? "#a1a1aa" : "#71717a";
@@ -165,7 +170,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
       grid: {
         top: 25,
         bottom: 20,
-        left: 40,
+        left: 45,
         right: 15,
         containLabel: true,
       },
@@ -237,7 +242,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
             </div>
             <div>
               <h3 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
-                {formatCurrency(stats.balance)}
+                {formatCurrency(stats.balance, currency)}
               </h3>
               <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">
                 Active ledger balance
@@ -257,8 +262,8 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
               </div>
             </div>
             <div>
-              <h3 className="text-2xl font-black tracking-tight text-emerald-650 dark:text-emerald-450 leading-none">
-                {formatCurrency(stats.income)}
+              <h3 className="text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 leading-none">
+                {formatCurrency(stats.income, currency)}
               </h3>
               <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">
                 Earnings bookmarked
@@ -278,8 +283,8 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
               </div>
             </div>
             <div>
-              <h3 className="text-2xl font-black tracking-tight text-red-500 dark:text-red-400 leading-none">
-                {formatCurrency(stats.expenses)}
+              <h3 className="text-2xl font-black tracking-tight text-red-550 dark:text-red-405 leading-none">
+                {formatCurrency(stats.expenses, currency)}
               </h3>
               <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">
                 Debits recorded
@@ -294,13 +299,13 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
         {/* Daily spending graph */}
         <Card className="lg:col-span-2">
           <CardContent className="p-6 space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-                Spending Trend (Active Days)
-              </h3>
-            </div>
+            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+              Spending Trend (Active Days)
+            </h3>
             {spendingTrend.dates.length > 0 ? (
-              <ReactECharts option={trendChartOption} style={{ height: "230px" }} />
+              <div className="h-[230px] w-full relative">
+                <ReactECharts option={trendChartOption} style={{ height: "100%", width: "100%" }} />
+              </div>
             ) : (
               <div className="h-[230px] flex items-center justify-center text-zinc-400 text-xs font-medium">
                 No transactions recorded for trend details
@@ -316,7 +321,9 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
               Expense Allocation
             </h3>
             {expenseByCategory.length > 0 ? (
-              <ReactECharts option={categoryChartOption} style={{ height: "230px" }} />
+              <div className="h-[230px] w-full relative">
+                <ReactECharts option={categoryChartOption} style={{ height: "100%", width: "100%" }} />
+              </div>
             ) : (
               <div className="h-[230px] flex items-center justify-center text-zinc-400 text-xs font-medium">
                 No expense data recorded
@@ -352,7 +359,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
                     <div key={b.category} className="space-y-1">
                       <div className="flex justify-between text-xs font-semibold">
                         <span className="text-zinc-800 dark:text-zinc-200">{b.category}</span>
-                        <span className={`${b.percent >= 100 ? "text-red-500" : "text-amber-500"}`}>
+                        <span className={`${b.percent >= 100 ? "text-red-505" : "text-amber-500"}`}>
                           {Math.round(b.percent)}%
                         </span>
                       </div>
@@ -361,9 +368,9 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
                         indicatorClassName={b.percent >= 100 ? "bg-red-500" : "bg-amber-500"}
                         className="h-1.5"
                       />
-                      <div className="flex justify-between text-[10px] text-zinc-400 font-semibold">
-                        <span>Spent: {formatCurrency(b.spent)}</span>
-                        <span>Limit: {formatCurrency(b.limit)}</span>
+                      <div className="flex justify-between text-[10px] text-zinc-405 font-semibold">
+                        <span>Spent: {formatCurrency(b.spent, currency)}</span>
+                        <span>Limit: {formatCurrency(b.limit, currency)}</span>
                       </div>
                     </div>
                   ))}
@@ -400,7 +407,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
             {topTransactions.length > 0 ? (
               <div className="divide-y divide-zinc-150/40 dark:divide-zinc-800/40">
                 {topTransactions.map((t) => {
-                  const info = getCategoryInfo(t.category, t.type);
+                  const info = getCategoryInfo(t.category, t.type, categories);
                   return (
                     <div key={t.id} className="py-3 flex items-center justify-between text-sm">
                       <div className="flex items-center gap-3">
@@ -413,7 +420,7 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
                           </span>
                         </div>
                         <div>
-                          <p className="font-bold text-zinc-850 dark:text-zinc-100 leading-tight">
+                          <p className="font-bold text-zinc-850 dark:text-zinc-105 leading-tight">
                             {t.title}
                           </p>
                           <p className="text-[10px] font-semibold text-zinc-400 mt-0.5 uppercase tracking-wider">
@@ -422,8 +429,8 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`font-black tracking-tight ${t.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-800 dark:text-zinc-200"}`}>
-                          {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount)}
+                        <p className={`font-black tracking-tight ${t.type === "income" ? "text-emerald-600 dark:text-emerald-450" : "text-zinc-800 dark:text-zinc-200"}`}>
+                          {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount, currency)}
                         </p>
                       </div>
                     </div>

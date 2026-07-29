@@ -6,7 +6,15 @@ import { BudgetsManager } from "./components/BudgetsManager";
 import { Subscriptions } from "./components/Subscriptions";
 import { TransactionModal } from "./components/TransactionModal";
 import { TaxCalculator } from "./components/TaxCalculator";
-import type { Transaction, Budget, Subscription } from "./utils/financeUtils";
+import { Login } from "./components/Login";
+import {
+  DEFAULT_EXPENSE_CATEGORIES,
+  DEFAULT_INCOME_CATEGORIES,
+  type Transaction,
+  type Budget,
+  type Subscription,
+  type CategoryInfo,
+} from "./utils/financeUtils";
 
 const SERVER_URL = "http://localhost:3001/api";
 
@@ -37,12 +45,33 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
 ];
 
 export default function App() {
-  // 1. Core States
+  // 1. Authentication State
+  const [user, setUser] = useState<string | null>(() => {
+    return localStorage.getItem("fortuna_user");
+  });
+
+  // Default tab selection shifts dynamically if unauthenticated
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const savedUser = localStorage.getItem("fortuna_user");
+    return savedUser ? "dashboard" : "tax";
+  });
+
+  // 2. Core Ledger & Analytics States
   const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
   const [budgets, setBudgets] = useState<Budget[]>(MOCK_BUDGETS);
   const [subscriptions, setSubscriptions] = useState<Subscription[]>(MOCK_SUBSCRIPTIONS);
   
-  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
+  const [categories, setCategories] = useState<CategoryInfo[]>(() => {
+    const saved = localStorage.getItem("fortuna_categories");
+    if (saved) return JSON.parse(saved);
+    return [...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES];
+  });
+
+  const [currency, setCurrency] = useState<"USD" | "ETB">(() => {
+    const saved = localStorage.getItem("fortuna_currency");
+    return (saved === "USD" || saved === "ETB") ? saved : "USD";
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isOnline, setIsOnline] = useState(false);
@@ -54,7 +83,7 @@ export default function App() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
 
-  // 2. Fetch Data from API on load with localStorage fallback
+  // 3. Fetch Data from API on load with localStorage fallback
   useEffect(() => {
     async function initFetch() {
       try {
@@ -64,12 +93,20 @@ export default function App() {
           setTransactions(txs);
           setIsOnline(true);
           
-          // Fetch budgets and subscriptions
           const budgetRes = await fetch(`${SERVER_URL}/budgets`);
           if (budgetRes.ok) setBudgets(await budgetRes.json());
           
           const subRes = await fetch(`${SERVER_URL}/subscriptions`);
           if (subRes.ok) setSubscriptions(await subRes.json());
+
+          const catRes = await fetch(`${SERVER_URL}/categories`);
+          if (catRes.ok) {
+            const serverCats = await catRes.json();
+            if (serverCats.length > 0) {
+              setCategories(serverCats);
+              localStorage.setItem("fortuna_categories", JSON.stringify(serverCats));
+            }
+          }
         }
       } catch (err) {
         console.warn("Backend server unreachable. Operating in Local Storage fallback mode.", err);
@@ -98,7 +135,12 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  // 3. Handlers
+  // Save currency to storage
+  useEffect(() => {
+    localStorage.setItem("fortuna_currency", currency);
+  }, [currency]);
+
+  // 4. Handlers
   const handleSaveTransaction = async (transactionData: Omit<Transaction, "id"> & { id?: string }) => {
     let savedTx = { ...transactionData };
     if (!savedTx.id) {
@@ -234,12 +276,45 @@ export default function App() {
     }
   };
 
+  const handleAddCategory = async (newCat: CategoryInfo) => {
+    const updated = [...categories, newCat];
+    setCategories(updated);
+    localStorage.setItem("fortuna_categories", JSON.stringify(updated));
+
+    if (isOnline) {
+      try {
+        await fetch(`${SERVER_URL}/categories`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newCat),
+        });
+      } catch (err) {
+        console.error("Failed to sync category to server:", err);
+      }
+    }
+  };
+
   const handleQuickAddIncome = (title: string, amount: number, type: "income" | "expense", category: string, date: string) => {
     handleSaveTransaction({ title, amount, type, category, date });
   };
 
   const handleTabNavigation = (tab: "transactions" | "budgets") => {
     setActiveTab(tab);
+  };
+
+  // Auth Controllers
+  const handleLoginSuccess = (username: string) => {
+    setUser(username);
+    localStorage.setItem("fortuna_user", username);
+    setActiveTab("dashboard");
+  };
+
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to log out of Fortuna?")) {
+      setUser(null);
+      localStorage.removeItem("fortuna_user");
+      setActiveTab("tax");
+    }
   };
 
   return (
@@ -251,20 +326,48 @@ export default function App() {
         isDarkMode={isDarkMode}
         setIsDarkMode={setIsDarkMode}
         isOnline={isOnline}
+        user={user}
+        onLogout={handleLogout}
+        currency={currency}
+        setCurrency={setCurrency}
       />
 
       {/* Main Panel Viewport */}
       <main className="flex-1 p-6 md:p-10 pt-24 lg:pt-10 max-w-[1200px] mx-auto w-full">
-        {activeTab === "dashboard" && (
+        {/* Public viewable Tab */}
+        {activeTab === "tax" && (
+          <TaxCalculator
+            onAddTransaction={handleQuickAddIncome}
+            isDarkMode={isDarkMode}
+            serverUrl={SERVER_URL}
+            isOnline={isOnline}
+            isLoggedIn={!!user}
+            currency={currency}
+          />
+        )}
+
+        {/* Public Login Tab */}
+        {activeTab === "login" && !user && (
+          <Login
+            onLoginSuccess={handleLoginSuccess}
+            serverUrl={SERVER_URL}
+            isOnline={isOnline}
+          />
+        )}
+
+        {/* Protected Views (only visible if logged in) */}
+        {user && activeTab === "dashboard" && (
           <Dashboard
             transactions={transactions}
             budgets={budgets}
             onNavigateToTab={handleTabNavigation}
             isDarkMode={isDarkMode}
+            categories={categories}
+            currency={currency}
           />
         )}
 
-        {activeTab === "transactions" && (
+        {user && activeTab === "transactions" && (
           <TransactionsList
             transactions={transactions}
             onAddClick={() => {
@@ -274,32 +377,30 @@ export default function App() {
             onEditClick={handleEditClick}
             onDeleteClick={handleDeleteTransaction}
             onClearAll={handleClearAllTransactions}
+            categories={categories}
+            currency={currency}
           />
         )}
 
-        {activeTab === "budgets" && (
+        {user && activeTab === "budgets" && (
           <BudgetsManager
             budgets={budgets}
             transactions={transactions}
             onSaveBudget={handleSaveBudget}
             onRemoveBudget={handleRemoveBudget}
+            categories={categories}
+            onAddCategory={handleAddCategory}
+            currency={currency}
           />
         )}
 
-        {activeTab === "subscriptions" && (
+        {user && activeTab === "subscriptions" && (
           <Subscriptions
             subscriptions={subscriptions}
             onSaveSubscription={handleSaveSubscription}
             onRemoveSubscription={handleRemoveSubscription}
-          />
-        )}
-
-        {activeTab === "tax" && (
-          <TaxCalculator
-            onAddTransaction={handleQuickAddIncome}
-            isDarkMode={isDarkMode}
-            serverUrl={SERVER_URL}
-            isOnline={isOnline}
+            categories={categories}
+            currency={currency}
           />
         )}
       </main>
@@ -313,6 +414,7 @@ export default function App() {
         }}
         onSave={handleSaveTransaction}
         editingTransaction={editingTransaction}
+        categories={categories}
       />
     </div>
   );

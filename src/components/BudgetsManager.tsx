@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
-import { Target, Trash2, Plus, ShieldAlert, AlertCircle } from "lucide-react";
-import { formatCurrency, EXPENSE_CATEGORIES, getCategoryInfo } from "../utils/financeUtils";
-import type { Budget, Transaction } from "../utils/financeUtils";
+import { Target, Trash2, Plus, ShieldAlert, AlertCircle, Tag } from "lucide-react";
+import { formatCurrency, getCategoryInfo } from "../utils/financeUtils";
+import type { Budget, Transaction, CategoryInfo } from "../utils/financeUtils";
 import { Card, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -13,12 +13,41 @@ interface BudgetsManagerProps {
   transactions: Transaction[];
   onSaveBudget: (budget: Budget) => void;
   onRemoveBudget: (category: string) => void;
+  categories: CategoryInfo[];
+  onAddCategory: (category: CategoryInfo) => void;
+  currency: "USD" | "ETB";
 }
 
-export function BudgetsManager({ budgets, transactions, onSaveBudget, onRemoveBudget }: BudgetsManagerProps) {
-  const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]?.id || "");
-  const [limit, setLimit] = useState("");
-  const [error, setError] = useState("");
+const PRESET_COLORS = [
+  "#ef4444", // Red
+  "#3b82f6", // Blue
+  "#a855f7", // Purple
+  "#eab308", // Yellow
+  "#10b981", // Emerald
+  "#ec4899", // Pink
+  "#6366f1", // Indigo
+  "#64748b", // Slate
+];
+
+export function BudgetsManager({
+  budgets,
+  transactions,
+  onSaveBudget,
+  onRemoveBudget,
+  categories,
+  onAddCategory,
+  currency,
+}: BudgetsManagerProps) {
+  // Budget Form
+  const [budgetCategory, setBudgetCategory] = useState("");
+  const [budgetLimit, setBudgetLimit] = useState("");
+  const [budgetError, setBudgetError] = useState("");
+
+  // Category Form
+  const [newCatLabel, setNewCatLabel] = useState("");
+  const [newCatType, setNewCatType] = useState<"expense" | "income">("expense");
+  const [newCatColor, setNewCatColor] = useState(PRESET_COLORS[0]);
+  const [catError, setCatError] = useState("");
 
   // Calculate actual spending per category
   const expenseMap = useMemo(() => {
@@ -36,7 +65,7 @@ export function BudgetsManager({ budgets, transactions, onSaveBudget, onRemoveBu
     return budgets.map((b) => {
       const spent = expenseMap[b.category] || 0;
       const pct = b.limit > 0 ? (spent / b.limit) * 100 : 0;
-      const catInfo = getCategoryInfo(b.category, "expense");
+      const catInfo = getCategoryInfo(b.category, "expense", categories);
 
       return {
         ...b,
@@ -46,40 +75,70 @@ export function BudgetsManager({ budgets, transactions, onSaveBudget, onRemoveBu
         color: catInfo.color,
       };
     });
-  }, [budgets, expenseMap]);
+  }, [budgets, expenseMap, categories]);
 
   // Exclude categories that already have budgets configured
   const availableCategories = useMemo(() => {
     const configured = new Set(budgets.map((b) => b.category));
-    return EXPENSE_CATEGORIES.filter((cat) => !configured.has(cat.id));
-  }, [budgets]);
+    const expenseCats = categories.filter((c) => c.type === "expense");
+    return expenseCats.filter((cat) => !configured.has(cat.id));
+  }, [budgets, categories]);
 
   // Update default category when budget list changes
   useMemo(() => {
-    if (availableCategories.length > 0 && !availableCategories.some((c) => c.id === category)) {
-      setCategory(availableCategories[0].id);
+    if (availableCategories.length > 0 && !availableCategories.some((c) => c.id === budgetCategory)) {
+      setBudgetCategory(availableCategories[0].id);
     }
-  }, [availableCategories, category]);
+  }, [availableCategories, budgetCategory]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleBudgetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setBudgetError("");
 
-    if (!category) {
-      setError("Please select a category");
+    if (!budgetCategory) {
+      setBudgetError("Please select a category");
       return;
     }
-    if (!limit.trim() || isNaN(Number(limit)) || Number(limit) <= 0) {
-      setError("Please enter a valid monthly limit");
+    if (!budgetLimit.trim() || isNaN(Number(budgetLimit)) || Number(budgetLimit) <= 0) {
+      setBudgetError("Please enter a valid monthly limit");
       return;
     }
 
     onSaveBudget({
-      category,
-      limit: parseFloat(limit),
+      category: budgetCategory,
+      limit: parseFloat(budgetLimit),
     });
 
-    setLimit("");
+    setBudgetLimit("");
+  };
+
+  const handleCategorySubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCatError("");
+
+    if (!newCatLabel.trim()) {
+      setCatError("Category label is required");
+      return;
+    }
+
+    const catId = newCatLabel.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    
+    // Check for duplicate ID
+    if (categories.some((c) => c.id === catId)) {
+      setCatError("A category with a similar name already exists");
+      return;
+    }
+
+    onAddCategory({
+      id: catId,
+      label: newCatLabel.trim(),
+      color: newCatColor,
+      iconName: newCatType === "expense" ? "Tag" : "TrendingUp",
+      type: newCatType,
+    });
+
+    setNewCatLabel("");
+    alert(`Category "${newCatLabel.trim()}" created successfully!`);
   };
 
   return (
@@ -87,68 +146,131 @@ export function BudgetsManager({ budgets, transactions, onSaveBudget, onRemoveBu
       {/* Page Header */}
       <div>
         <h2 className="text-2xl font-black text-zinc-900 dark:text-zinc-50 tracking-tight">
-          Category Budgets
+          Budgets & Categories
         </h2>
         <p className="text-sm font-semibold text-zinc-400">
-          Enforce and monitor monthly spending boundaries
+          Enforce monthly boundaries and manage custom expense types
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        {/* Budget Config Form Card */}
-        <Card className="lg:col-span-1">
-          <CardContent className="p-6 space-y-4">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
-              <Target className="h-4 w-4 text-violet-500" /> Allocate Budget
-            </h3>
-            
-            {availableCategories.length > 0 ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Category */}
-                <div className="space-y-1.5">
-                  <Label htmlFor="b-cat">Category</Label>
-                  <select
-                    id="b-cat"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    className="w-full h-11 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500/30 cursor-pointer appearance-none"
-                  >
-                    {availableCategories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+        {/* Left Hand side configuration cards */}
+        <div className="space-y-6 lg:col-span-1">
+          {/* Budget Config Form Card */}
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                <Target className="h-4 w-4 text-violet-500" /> Allocate Budget
+              </h3>
+              
+              {availableCategories.length > 0 ? (
+                <form onSubmit={handleBudgetSubmit} className="space-y-4">
+                  {/* Category */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="b-cat">Category</Label>
+                    <select
+                      id="b-cat"
+                      value={budgetCategory}
+                      onChange={(e) => setBudgetCategory(e.target.value)}
+                      className="w-full h-11 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500/30 cursor-pointer appearance-none"
+                    >
+                      {availableCategories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                {/* Monthly Limit */}
+                  {/* Monthly Limit */}
+                  <div className="space-y-1.5">
+                    <Label htmlFor="b-limit">Monthly Limit</Label>
+                    <Input
+                      id="b-limit"
+                      type="text"
+                      placeholder="e.g. 500"
+                      value={budgetLimit}
+                      onChange={(e) => setBudgetLimit(e.target.value)}
+                    />
+                  </div>
+
+                  {budgetError && <p className="text-xs text-red-500 font-semibold">{budgetError}</p>}
+
+                  <Button type="submit" className="w-full">
+                    <Plus className="h-4 w-4 mr-1" /> Create Budget
+                  </Button>
+                </form>
+              ) : (
+                <div className="p-4 text-center border border-dashed border-zinc-200 dark:border-zinc-850 rounded-2xl text-zinc-400 text-xs font-medium">
+                  All categories already have budgets allocated.
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Dynamic Categories Builder Card */}
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                <Tag className="h-4 w-4 text-violet-500" /> Create Custom Category
+              </h3>
+
+              <form onSubmit={handleCategorySubmit} className="space-y-4">
+                {/* Category Name */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="b-limit">Monthly Limit ($)</Label>
+                  <Label htmlFor="c-name">Category Name</Label>
                   <Input
-                    id="b-limit"
+                    id="c-name"
                     type="text"
-                    placeholder="e.g. 500"
-                    value={limit}
-                    onChange={(e) => setLimit(e.target.value)}
+                    placeholder="e.g. Subscriptions, Gifts"
+                    value={newCatLabel}
+                    onChange={(e) => setNewCatLabel(e.target.value)}
                   />
                 </div>
 
-                {error && <p className="text-xs text-red-500 font-semibold">{error}</p>}
+                {/* Category Type */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="c-type">Type</Label>
+                  <select
+                    id="c-type"
+                    value={newCatType}
+                    onChange={(e) => setNewCatType(e.target.value as "expense" | "income")}
+                    className="w-full h-11 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500/30 cursor-pointer appearance-none"
+                  >
+                    <option value="expense">Expense Type</option>
+                    <option value="income">Income Type</option>
+                  </select>
+                </div>
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Create Budget
+                {/* Color Selector dots */}
+                <div className="space-y-2">
+                  <Label>Accent Color</Label>
+                  <div className="flex flex-wrap gap-2.5 pt-1">
+                    {PRESET_COLORS.map((col) => (
+                      <button
+                        key={col}
+                        type="button"
+                        onClick={() => setNewCatColor(col)}
+                        className={`w-6 h-6 rounded-full border-2 transition-transform cursor-pointer hover:scale-110 ${
+                          newCatColor === col 
+                            ? "border-zinc-900 dark:border-white scale-110 shadow-sm" 
+                            : "border-transparent"
+                        }`}
+                        style={{ backgroundColor: col }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {catError && <p className="text-xs text-red-500 font-semibold">{catError}</p>}
+
+                <Button type="submit" variant="outline" className="w-full h-10 text-xs">
+                  <Plus className="h-4 w-4 mr-1" /> Add Category
                 </Button>
               </form>
-            ) : (
-              <div className="p-4 text-center border border-dashed border-zinc-200 dark:border-zinc-850 rounded-2xl text-zinc-400 text-xs font-medium">
-                All available expense categories already have budgets allocated.
-              </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Budgets Progress Grid */}
         <div className="lg:col-span-2 space-y-4">
@@ -201,7 +323,7 @@ export function BudgetsManager({ budgets, transactions, onSaveBudget, onRemoveBu
                           <div className="flex justify-between text-xs font-semibold">
                             <span className="text-zinc-500">Progress</span>
                             <span className={isExceeded ? "text-red-500 font-bold" : isWarning ? "text-amber-500 font-bold" : "text-zinc-750 dark:text-zinc-300"}>
-                              {formatCurrency(b.spent)} / {formatCurrency(b.limit)}
+                              {formatCurrency(b.spent, currency)} / {formatCurrency(b.limit, currency)}
                             </span>
                           </div>
 

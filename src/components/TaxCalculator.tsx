@@ -28,11 +28,22 @@ interface TaxCalculatorProps {
   isDarkMode: boolean;
   serverUrl: string;
   isOnline: boolean;
+  isLoggedIn: boolean;
+  currency: "USD" | "ETB";
 }
 
-export function TaxCalculator({ onAddTransaction, isDarkMode, serverUrl, isOnline }: TaxCalculatorProps) {
+const ETB_TO_USD_RATE = 120; // 1 USD = 120 ETB standard exchange rate for calculations
+
+export function TaxCalculator({
+  onAddTransaction,
+  isDarkMode,
+  serverUrl,
+  isOnline,
+  isLoggedIn,
+  currency,
+}: TaxCalculatorProps) {
   // Inputs
-  const [title, setTitle] = useState("July Salary");
+  const [title, setTitle] = useState("Salary Calculation");
   const [basicSalary, setBasicSalary] = useState("15000");
   const [transportAllowance, setTransportAllowance] = useState("1000");
   const [otherAllowances, setOtherAllowances] = useState("0");
@@ -73,7 +84,7 @@ export function TaxCalculator({ onAddTransaction, isDarkMode, serverUrl, isOnlin
     localStorage.setItem("fortuna_tax_history", JSON.stringify(newHistory));
   };
 
-  // Perform Calculations
+  // Perform Calculations based on Proclamation 1395/2025
   const results = useMemo(() => {
     const basic = parseFloat(basicSalary) || 0;
     const transport = parseFloat(transportAllowance) || 0;
@@ -83,47 +94,43 @@ export function TaxCalculator({ onAddTransaction, isDarkMode, serverUrl, isOnlin
     // 1. Employee Pension (7% of Basic Salary)
     const pension = pensionExempted ? basic * 0.07 : 0;
 
-    // 2. Transport Allowance Exemption Calculation:
-    // Under Ethiopian Tax Directive: Transport allowance is exempt up to 600 ETB or 1/4 of basic salary (whichever is lower).
+    // 2. Transport Allowance Exemption:
+    // Exempt up to 600 ETB or 1/4 of basic salary (whichever is lower).
     const transportLimit = Math.min(600, basic * 0.25);
     const taxableTransport = Math.max(0, transport - transportLimit);
 
     // 3. Taxable Income
     const taxableIncome = Math.max(0, basic + taxableTransport + other - pension);
 
-    // 4. Bracket Tax Calculations
+    // 4. Bracket Tax Calculations under Proclamation 1395/2025
     let tax = 0;
     let bracketDetails = "";
     let deduction = 0;
 
-    if (taxableIncome <= 600) {
+    if (taxableIncome <= 2000) {
       tax = 0;
       deduction = 0;
-      bracketDetails = "0 - 600 ETB (0% Tax)";
-    } else if (taxableIncome <= 1650) {
-      tax = taxableIncome * 0.10 - 60;
-      deduction = 60;
-      bracketDetails = "601 - 1,650 ETB (10% Tax)";
-    } else if (taxableIncome <= 3200) {
-      tax = taxableIncome * 0.15 - 142.50;
-      deduction = 142.50;
-      bracketDetails = "1,651 - 3,200 ETB (15% Tax)";
-    } else if (taxableIncome <= 5250) {
-      tax = taxableIncome * 0.20 - 302.50;
-      deduction = 302.50;
-      bracketDetails = "3,201 - 5,250 ETB (20% Tax)";
-    } else if (taxableIncome <= 7800) {
-      tax = taxableIncome * 0.25 - 565;
-      deduction = 565;
-      bracketDetails = "5,251 - 7,800 ETB (25% Tax)";
-    } else if (taxableIncome <= 10900) {
-      tax = taxableIncome * 0.30 - 955;
-      deduction = 955;
-      bracketDetails = "7,801 - 10,900 ETB (30% Tax)";
+      bracketDetails = "0 - 2,000 ETB (0% Tax)";
+    } else if (taxableIncome <= 4000) {
+      tax = taxableIncome * 0.15 - 300;
+      deduction = 300;
+      bracketDetails = "2,001 - 4,000 ETB (15% Tax)";
+    } else if (taxableIncome <= 7000) {
+      tax = taxableIncome * 0.20 - 500;
+      deduction = 500;
+      bracketDetails = "4,001 - 7,000 ETB (20% Tax)";
+    } else if (taxableIncome <= 10000) {
+      tax = taxableIncome * 0.25 - 850;
+      deduction = 850;
+      bracketDetails = "7,001 - 10,000 ETB (25% Tax)";
+    } else if (taxableIncome <= 14000) {
+      tax = taxableIncome * 0.30 - 1350;
+      deduction = 1350;
+      bracketDetails = "10,001 - 14,000 ETB (30% Tax)";
     } else {
-      tax = taxableIncome * 0.35 - 1500;
-      deduction = 1500;
-      bracketDetails = "Above 10,900 ETB (35% Tax)";
+      tax = taxableIncome * 0.35 - 2050;
+      deduction = 2050;
+      bracketDetails = "Above 14,000 ETB (35% Tax)";
     }
 
     tax = Math.max(0, tax);
@@ -176,7 +183,7 @@ export function TaxCalculator({ onAddTransaction, isDarkMode, serverUrl, isOnlin
             },
           },
           data: [
-            { name: "Net Pay", value: Math.round(results.netPay), itemStyle: { color: "#10b981" } },
+            { name: "Net Take-Home", value: Math.round(results.netPay), itemStyle: { color: "#10b981" } },
             { name: "Income Tax", value: Math.round(results.incomeTax), itemStyle: { color: "#ef4444" } },
             { name: "Pension (7%)", value: Math.round(results.pensionAmount), itemStyle: { color: "#f59e0b" } },
           ].filter(item => item.value > 0),
@@ -222,7 +229,6 @@ export function TaxCalculator({ onAddTransaction, isDarkMode, serverUrl, isOnlin
       alert("Tax calculation log saved successfully!");
     } catch (err) {
       console.error("Failed to save tax record:", err);
-      // Fallback
       const localRecord = { ...newRecord, id: Math.random().toString(36).substring(2, 9) };
       const updated = [localRecord, ...history];
       setHistory(updated);
@@ -232,15 +238,29 @@ export function TaxCalculator({ onAddTransaction, isDarkMode, serverUrl, isOnlin
   };
 
   const handleLogAsIncome = () => {
+    if (!isLoggedIn) {
+      alert("Authentication Required: Please sign in from the sidebar to log this take-home salary into your expense ledger.");
+      return;
+    }
+
     const today = new Date().toISOString().slice(0, 10);
+    // Convert to USD if main system currency is USD
+    const logAmount = currency === "USD" ? results.netPay / ETB_TO_USD_RATE : results.netPay;
+    const finalAmount = parseFloat(logAmount.toFixed(2));
+    
     onAddTransaction(
       `${title.trim() || "Salary Pay"} (Net)`,
-      parseFloat(results.netPay.toFixed(2)),
+      finalAmount,
       "income",
       "salary",
       today,
     );
-    alert("Net pay logged successfully as an income transaction in your main ledger!");
+    
+    const message = currency === "USD" 
+      ? `Net Take-Home logged as ${formatCurrency(finalAmount, "USD")} (Converted from ${results.netPay.toLocaleString()} ETB at 1 USD = ${ETB_TO_USD_RATE} ETB).`
+      : `Net Take-Home logged as ${results.netPay.toLocaleString()} ETB.`;
+
+    alert(message);
   };
 
   const handleDeleteRecord = async (id: string) => {
@@ -269,7 +289,7 @@ export function TaxCalculator({ onAddTransaction, isDarkMode, serverUrl, isOnlin
           Ethiopian Income Tax Calculator
         </h2>
         <p className="text-sm font-semibold text-zinc-400">
-          Compute monthly employment income tax in accordance with Proclamation No. 979/2016 (Schedule A)
+          Compute monthly employment income tax in accordance with Proclamation No. 1395/2025 (Schedule A)
         </p>
       </div>
 
@@ -291,7 +311,7 @@ export function TaxCalculator({ onAddTransaction, isDarkMode, serverUrl, isOnlin
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. July Salary"
+                placeholder="e.g. Salary Pay"
               />
             </div>
 
@@ -382,23 +402,23 @@ export function TaxCalculator({ onAddTransaction, isDarkMode, serverUrl, isOnlin
               <div className="divide-y divide-zinc-150/40 dark:divide-zinc-800/40 text-xs font-semibold">
                 <div className="py-2.5 flex justify-between">
                   <span className="text-zinc-500">Gross Salary</span>
-                  <span className="text-zinc-850 dark:text-zinc-100">{formatCurrency(results.grossSalary).replace("$", "ETB ")}</span>
+                  <span className="text-zinc-850 dark:text-zinc-100">{formatCurrency(results.grossSalary, "ETB")}</span>
                 </div>
                 {pensionExempted && (
                   <div className="py-2.5 flex justify-between">
                     <span className="text-zinc-500">Employee Pension (7%)</span>
-                    <span className="text-amber-500">-{formatCurrency(results.pensionAmount).replace("$", "ETB ")}</span>
+                    <span className="text-amber-500">-{formatCurrency(results.pensionAmount, "ETB")}</span>
                   </div>
                 )}
                 {parseFloat(transportAllowance) > 0 && (
                   <div className="py-2.5 flex justify-between">
                     <span className="text-zinc-500">Exempted Transport Allow.</span>
-                    <span className="text-emerald-500">{formatCurrency(results.exemptedTransport).replace("$", "ETB ")}</span>
+                    <span className="text-emerald-500">{formatCurrency(results.exemptedTransport, "ETB")}</span>
                   </div>
                 )}
                 <div className="py-2.5 flex justify-between">
                   <span className="text-zinc-500">Total Taxable Income</span>
-                  <span className="text-zinc-850 dark:text-zinc-100">{formatCurrency(results.taxableIncome).replace("$", "ETB ")}</span>
+                  <span className="text-zinc-850 dark:text-zinc-100">{formatCurrency(results.taxableIncome, "ETB")}</span>
                 </div>
                 <div className="py-2.5 flex justify-between">
                   <span className="text-zinc-500">Tax Bracket Match</span>
@@ -406,22 +426,22 @@ export function TaxCalculator({ onAddTransaction, isDarkMode, serverUrl, isOnlin
                 </div>
                 <div className="py-2.5 flex justify-between">
                   <span className="text-zinc-500">Income Tax Charge</span>
-                  <span className="text-red-500">-{formatCurrency(results.incomeTax).replace("$", "ETB ")}</span>
+                  <span className="text-red-500">-{formatCurrency(results.incomeTax, "ETB")}</span>
                 </div>
                 <div className="py-2.5 flex justify-between text-sm font-black border-t-2 border-zinc-200 dark:border-zinc-800 pt-3">
                   <span className="text-zinc-800 dark:text-zinc-200">Net Take-Home Pay</span>
-                  <span className="text-emerald-600 dark:text-emerald-400">{formatCurrency(results.netPay).replace("$", "ETB ")}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400">{formatCurrency(results.netPay, "ETB")}</span>
                 </div>
               </div>
             </Card>
 
             {/* Doughnut Distribution Chart Card */}
-            <Card className="p-6 flex flex-col justify-between">
+            <Card className="p-6 flex flex-col justify-between h-full">
               <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 mb-2">
                 Income Distribution
               </h3>
-              <div className="flex-1 flex items-center justify-center">
-                <ReactECharts option={chartOption} style={{ height: "180px", width: "100%" }} />
+              <div className="h-[180px] w-full relative">
+                <ReactECharts option={chartOption} style={{ height: "100%", width: "100%" }} />
               </div>
             </Card>
           </div>

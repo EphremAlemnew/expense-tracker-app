@@ -2,8 +2,6 @@
 
 **Fortuna** is a premium, offline-first dashboard for financial tracking, budget enforcement, and tax calculations. Built with a modern glassmorphic interface, it integrates custom **shadcn-compatible UI primitives** (Radix UI), **Apache ECharts** for analytics, and a resilient **Node.js/Express backend** featuring automatic **LocalStorage fallbacks** when offline.
 
-It also includes a dedicated **Ethiopian Income Tax Calculator** based on Federal Income Tax Proclamation No. 979/2016 (Schedule A).
-
 ---
 
 ## 🚀 Key Features
@@ -21,30 +19,44 @@ It also includes a dedicated **Ethiopian Income Tax Calculator** based on Federa
 - **Header Sorting**: Order ledger records by Date or Amount.
 - **CSV Exporter**: Generates formatted logs for instant spreadsheet imports.
 - **Data Flush**: Clear ledger actions.
+- **Mobile Responsive**: Dynamically switches from wide tables to card lists on mobile screens.
 
-### 🎯 3. Budget limits Enforcer
+### 🎯 3. Budget Limits & Dynamic Categories
 - Allocate monthly thresholds for specific expense categories.
-- Tracks real-time spending progress with color-coded safety meters:
-  - 🟢 **Green**: Under control
-  - 🟡 **Amber**: Warning threshold reached (>=80% usage)
-  - 🔴 **Red**: Budget overrun (>=100% usage)
+- Tracks real-time spending progress with color-coded safety meters (Green -> Amber -> Red).
+- **Custom Categories Builder**: Create custom expense and income categories with specific labels and color presets dynamically.
 
 ### 🗓️ 4. Recurring Bills & Subscriptions
 - Logs recurring monthly commitments (SaaS, Gym memberships, rent, utility bills).
-- Visual countdown badges indicating payment urgency:
-  - 🚨 **Pulsing Red**: "Due Today" (day 0)
-  - 🟠 **Orange**: "Due Tomorrow" (day 1)
-  - 🟡 **Amber**: "Due in X days" (days 2 to 5)
-  - ⚪ **Gray**: "In X days" (days 6+)
+- Visual countdown badges indicating payment urgency (Due Today, Due Tomorrow, In X days).
 
 ### 🇪🇹 5. Ethiopian Income Tax Calculator
-- **Schedule A Compliance (Proclamation No. 979/2016)**:
+- **Schedule A Compliance (Proclamation No. 1395/2025)**:
   - **Employee Pension**: 7% Basic Salary (exempted from taxable income).
   - **Transport Allowance Exemption**: Automatically deducts exempt portion (up to 600 ETB or 1/4 of basic salary, whichever is lower) before tax calculations.
-  - **Tax Bracket Breakdowns**: Precise calculations displaying exact brackets and deductions (10% to 35%).
+  - **Tax Bracket Breakdowns**: Precise calculations displaying exact brackets and deductions (15% to 35%).
 - **Interactive Graphs**: Visualizes Gross Salary distribution (Net Take-home, Tax, Pension) in real-time.
 - **Integration**: Instant button to log Net Pay directly into your main transactions ledger.
+  - *Note: Converts ETB salary to USD using a standard exchange rate (1 USD = 120 ETB) if your profile currency is set to USD.*
 - **History Logs**: Save past calculation sheets to an audit history.
+
+---
+
+## 🔒 Authentication & Public Access
+
+- **Public Access**: The **Tax Calculator** is fully operational without authentication. Users can compute monthly salaries, analyze breakdowns, and view histories.
+- **Protected Access**: The Dashboard, Ledger, Budgets, and Subscriptions views require logging in.
+- **Default Credentials**:
+  - **Username**: `ephrem`
+  - **Password**: `password123`
+  - *Note: Login endpoint `/api/login` will fall back to local validation if the server is offline.*
+
+---
+
+## 💵 Currency Settings
+- Supports **USD ($)** and **ETB (Br)**.
+- Can be switched instantly from the Sidebar footer.
+- Adapts all visual stats, graphs, transaction amounts, budgets, and countdown details dynamically.
 
 ---
 
@@ -87,14 +99,13 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ---
 
-## ⚖️ Ethiopian Employment Income Tax Brackets (Proclamation 979/2016)
+## ⚖️ Ethiopian Employment Income Tax Brackets (Proclamation 1395/2025)
 
 | Taxable Income Bracket (ETB) | Tax Rate | Deductible Amount (ETB) |
 | :--- | :--- | :--- |
-| 0 - 600 | 0% | 0 |
-| 601 - 1,650 | 10% | 60 |
-| 1,651 - 3,200 | 15% | 142.50 |
-| 3,201 - 5,250 | 20% | 302.50 |
-| 5,251 - 7,800 | 25% | 565 |
-| 7,801 - 10,900 | 30% | 955 |
-| Above 10,900 | 35% | 1,500 |
+| 0 - 2,000 | 0% | 0 |
+| 2,001 - 4,000 | 15% | 300 |
+| 4,001 - 7,000 | 20% | 500 |
+| 7,001 - 10,000 | 25% | 850 |
+| 10,001 - 14,000 | 30% | 1,350 |
+| Above 14,000 | 35% | 2,050 |

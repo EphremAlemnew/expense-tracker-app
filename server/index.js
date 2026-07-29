@@ -20,7 +20,7 @@ async function readDB() {
     return JSON.parse(data);
   } catch (error) {
     console.error("Error reading database:", error);
-    return { transactions: [], budgets: [], subscriptions: [], taxCalculations: [] };
+    return { transactions: [], budgets: [], subscriptions: [], categories: [], taxCalculations: [] };
   }
 }
 
@@ -34,6 +34,16 @@ async function writeDB(data) {
 }
 
 // --- API Endpoints ---
+
+// Authentication Route
+app.post("/api/login", async (req, res) => {
+  const { username, password } = req.body;
+  if (username === "ephrem" && password === "password123") {
+    res.json({ success: true, token: "fortuna_auth_token_secret", username: "ephrem" });
+  } else {
+    res.status(401).json({ success: false, message: "Incorrect username or password. Please try again." });
+  }
+});
 
 // 1. Transactions
 app.get("/api/transactions", async (req, res) => {
@@ -120,7 +130,6 @@ app.post("/api/subscriptions", async (req, res) => {
 
   if (!db.subscriptions) db.subscriptions = [];
   
-  // Basic generate ID if not exists
   if (!sub.id) {
     sub.id = Math.random().toString(36).substring(2, 9);
   }
@@ -145,7 +154,35 @@ app.delete("/api/subscriptions/:id", async (req, res) => {
   res.status(200).json({ success: true });
 });
 
-// 4. Tax Calculations
+// 4. Categories
+app.get("/api/categories", async (req, res) => {
+  const db = await readDB();
+  res.json(db.categories || []);
+});
+
+app.post("/api/categories", async (req, res) => {
+  const db = await readDB();
+  const cat = req.body;
+
+  if (!db.categories) db.categories = [];
+  
+  if (!cat.id) {
+    cat.id = cat.label.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  }
+
+  // Double check if category already exists
+  const idx = db.categories.findIndex((c) => c.id === cat.id);
+  if (idx > -1) {
+    db.categories[idx] = cat;
+  } else {
+    db.categories.push(cat);
+  }
+
+  await writeDB(db);
+  res.status(200).json(cat);
+});
+
+// 5. Tax Calculations
 app.get("/api/tax-calculations", async (req, res) => {
   const db = await readDB();
   res.json(db.taxCalculations || []);

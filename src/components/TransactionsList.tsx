@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Search, Trash2, Edit3, ArrowUpDown, Download, Trash, Plus, FilterX } from "lucide-react";
-import { formatCurrency, getCategoryInfo, exportToCSV, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "../utils/financeUtils";
-import type { Transaction } from "../utils/financeUtils";
+import { formatCurrency, getCategoryInfo, exportToCSV } from "../utils/financeUtils";
+import type { Transaction, CategoryInfo } from "../utils/financeUtils";
 import { Card, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
@@ -12,6 +12,8 @@ interface TransactionsListProps {
   onEditClick: (transaction: Transaction) => void;
   onDeleteClick: (id: string) => void;
   onClearAll: () => void;
+  categories: CategoryInfo[];
+  currency: "USD" | "ETB";
 }
 
 type SortField = "date" | "amount";
@@ -23,6 +25,8 @@ export function TransactionsList({
   onEditClick,
   onDeleteClick,
   onClearAll,
+  categories,
+  currency,
 }: TransactionsListProps) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
@@ -38,10 +42,10 @@ export function TransactionsList({
 
   // Available categories for current type filter
   const categoriesList = useMemo(() => {
-    if (typeFilter === "expense") return EXPENSE_CATEGORIES;
-    if (typeFilter === "income") return INCOME_CATEGORIES;
-    return [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES];
-  }, [typeFilter]);
+    if (typeFilter === "expense") return categories.filter((c) => c.type === "expense");
+    if (typeFilter === "income") return categories.filter((c) => c.type === "income");
+    return categories;
+  }, [typeFilter, categories]);
 
   // Handle Sort Toggle
   const handleSort = (field: SortField) => {
@@ -115,7 +119,7 @@ export function TransactionsList({
           {transactions.length > 0 && (
             <>
               <Button
-                onClick={() => exportToCSV(transactions)}
+                onClick={() => exportToCSV(transactions, currency)}
                 variant="outline"
                 size="sm"
                 className="flex items-center gap-1.5 h-10 w-full sm:w-auto"
@@ -204,94 +208,161 @@ export function TransactionsList({
       </Card>
 
       {/* Ledger Records */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-hidden border border-zinc-200/50 dark:border-zinc-800/50">
         <CardContent className="p-0">
           {processedTransactions.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-zinc-200 dark:border-zinc-850 bg-zinc-50/50 dark:bg-zinc-950/20 text-zinc-400 font-bold uppercase tracking-wider select-none">
-                    <th 
-                      onClick={() => handleSort("date")} 
-                      className="p-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors w-[130px]"
-                    >
-                      <div className="flex items-center gap-1">
-                        Date <ArrowUpDown className="h-3 w-3" />
-                      </div>
-                    </th>
-                    <th className="p-4">Title</th>
-                    <th className="p-4">Category</th>
-                    <th 
-                      onClick={() => handleSort("amount")} 
-                      className="p-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-right w-[140px]"
-                    >
-                      <div className="flex items-center justify-end gap-1">
-                        Amount <ArrowUpDown className="h-3 w-3" />
-                      </div>
-                    </th>
-                    <th className="p-4 text-center w-[120px]">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60 text-zinc-700 dark:text-zinc-300">
-                  {processedTransactions.map((t) => {
-                    const info = getCategoryInfo(t.category, t.type);
-                    return (
-                      <tr 
-                        key={t.id}
-                        className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors align-middle"
+            <>
+              {/* DESKTOP TABLE VIEW */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-zinc-200 dark:border-zinc-850 bg-zinc-55/30 dark:bg-zinc-950/20 text-zinc-400 font-bold uppercase tracking-wider select-none">
+                      <th 
+                        onClick={() => handleSort("date")} 
+                        className="p-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors w-[130px]"
                       >
-                        <td className="p-4 font-semibold text-zinc-500 whitespace-nowrap">
-                          {new Date(t.date).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "short",
-                            day: "numeric",
-                          })}
-                        </td>
-                        <td className="p-4">
-                          <p className="font-bold text-zinc-900 dark:text-zinc-100">{t.title}</p>
-                          {t.notes && <p className="text-[10px] text-zinc-405 mt-0.5 truncate max-w-xs">{t.notes}</p>}
-                        </td>
-                        <td className="p-4">
-                          <span 
-                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-white uppercase tracking-wider"
-                            style={{ backgroundColor: info.color }}
-                          >
-                            {info.label}
-                          </span>
-                        </td>
-                        <td className={`p-4 text-right font-black text-sm tracking-tight whitespace-nowrap ${
-                          t.type === "income" ? "text-emerald-600 dark:text-emerald-450" : "text-zinc-850 dark:text-zinc-100"
+                        <div className="flex items-center gap-1">
+                          Date <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </th>
+                      <th className="p-4">Title</th>
+                      <th className="p-4">Category</th>
+                      <th 
+                        onClick={() => handleSort("amount")} 
+                        className="p-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors text-right w-[140px]"
+                      >
+                        <div className="flex items-center justify-end gap-1">
+                          Amount <ArrowUpDown className="h-3 w-3" />
+                        </div>
+                      </th>
+                      <th className="p-4 text-center w-[120px]">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-zinc-200/60 dark:divide-zinc-800/60 text-zinc-700 dark:text-zinc-300">
+                    {processedTransactions.map((t) => {
+                      const info = getCategoryInfo(t.category, t.type, categories);
+                      return (
+                        <tr 
+                          key={t.id}
+                          className="hover:bg-zinc-50/50 dark:hover:bg-zinc-900/10 transition-colors align-middle"
+                        >
+                          <td className="p-4 font-semibold text-zinc-500 whitespace-nowrap">
+                            {new Date(t.date).toLocaleDateString("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </td>
+                          <td className="p-4">
+                            <p className="font-bold text-zinc-900 dark:text-zinc-100">{t.title}</p>
+                            {t.notes && <p className="text-[10px] text-zinc-405 mt-0.5 truncate max-w-xs">{t.notes}</p>}
+                          </td>
+                          <td className="p-4">
+                            <span 
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold text-white uppercase tracking-wider"
+                              style={{ backgroundColor: info.color }}
+                            >
+                              {info.label}
+                            </span>
+                          </td>
+                          <td className={`p-4 text-right font-black text-sm tracking-tight whitespace-nowrap ${
+                            t.type === "income" ? "text-emerald-600 dark:text-emerald-450" : "text-zinc-850 dark:text-zinc-100"
+                          }`}>
+                            {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount, currency)}
+                          </td>
+                          <td className="p-4 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                onClick={() => onEditClick(t)}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-lg hover:text-violet-500"
+                                title="Edit transaction"
+                              >
+                                <Edit3 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                onClick={() => onDeleteClick(t.id)}
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-lg hover:text-red-505 hover:bg-red-550/10"
+                                title="Delete transaction"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* MOBILE RESPONSIVE CARD LIST VIEW */}
+              <div className="block md:hidden divide-y divide-zinc-200/50 dark:divide-zinc-800/40">
+                {processedTransactions.map((t) => {
+                  const info = getCategoryInfo(t.category, t.type, categories);
+                  return (
+                    <div key={t.id} className="p-4 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="font-bold text-sm text-zinc-905 dark:text-zinc-100">{t.title}</p>
+                          <p className="text-[10px] text-zinc-400 font-semibold mt-0.5">
+                            {new Date(t.date).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                              year: "numeric"
+                            })}
+                          </p>
+                        </div>
+                        <span 
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold text-white uppercase tracking-wider"
+                          style={{ backgroundColor: info.color }}
+                        >
+                          {info.label}
+                        </span>
+                      </div>
+
+                      {t.notes && (
+                        <p className="text-xs text-zinc-500 bg-zinc-50 dark:bg-zinc-900/50 p-2 rounded-xl border border-zinc-200/20 italic">
+                          {t.notes}
+                        </p>
+                      )}
+
+                      <div className="flex justify-between items-center pt-1.5">
+                        <span className={`text-base font-black tracking-tight ${
+                          t.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-850 dark:text-zinc-100"
                         }`}>
-                          {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount)}
-                        </td>
-                        <td className="p-4 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
-                            <Button
-                              onClick={() => onEditClick(t)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-lg hover:text-violet-500"
-                              title="Edit transaction"
-                            >
-                              <Edit3 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              onClick={() => onDeleteClick(t.id)}
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 rounded-lg hover:text-red-500 hover:bg-red-500/10"
-                              title="Delete transaction"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount, currency)}
+                        </span>
+                        
+                        <div className="flex items-center gap-1.5">
+                          <Button
+                            onClick={() => onEditClick(t)}
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-lg"
+                            title="Edit"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            onClick={() => onDeleteClick(t.id)}
+                            variant="outline"
+                            size="sm"
+                            className="h-8 w-8 p-0 rounded-lg text-red-500 hover:bg-red-500/10 border-red-500/10"
+                            title="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           ) : (
             <div className="p-12 text-center text-zinc-400 font-medium space-y-2">
               <p className="text-xs">No transaction records match the filters</p>

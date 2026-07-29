@@ -26,36 +26,48 @@ export interface CategoryInfo {
   label: string;
   color: string; // Hex color for ECharts
   iconName: string;
+  type: "income" | "expense";
 }
 
-export const EXPENSE_CATEGORIES: CategoryInfo[] = [
-  { id: "food", label: "Food & Dining", color: "#ef4444", iconName: "Utensils" },
-  { id: "shopping", label: "Shopping", color: "#f97316", iconName: "ShoppingBag" },
-  { id: "utilities", label: "Rent & Utilities", color: "#3b82f6", iconName: "Home" },
-  { id: "entertainment", label: "Entertainment", color: "#a855f7", iconName: "Gamepad2" },
-  { id: "transport", label: "Transport & Travel", color: "#14b8a6", iconName: "Car" },
-  { id: "health", label: "Health & Wellness", color: "#ec4899", iconName: "Activity" },
-  { id: "misc", label: "Miscellaneous", color: "#6b7280", iconName: "HelpCircle" },
+export const DEFAULT_EXPENSE_CATEGORIES: CategoryInfo[] = [
+  { id: "food", label: "Food & Dining", color: "#ef4444", iconName: "Utensils", type: "expense" },
+  { id: "shopping", label: "Shopping", color: "#f97316", iconName: "ShoppingBag", type: "expense" },
+  { id: "utilities", label: "Rent & Utilities", color: "#3b82f6", iconName: "Home", type: "expense" },
+  { id: "entertainment", label: "Entertainment", color: "#a855f7", iconName: "Gamepad2", type: "expense" },
+  { id: "transport", label: "Transport & Travel", color: "#14b8a6", iconName: "Car", type: "expense" },
+  { id: "health", label: "Health & Wellness", color: "#ec4899", iconName: "Activity", type: "expense" },
+  { id: "misc", label: "Miscellaneous", color: "#6b7280", iconName: "HelpCircle", type: "expense" },
 ];
 
-export const INCOME_CATEGORIES: CategoryInfo[] = [
-  { id: "salary", label: "Salary & Wages", color: "#10b981", iconName: "Briefcase" },
-  { id: "freelance", label: "Freelance/Side Hustle", color: "#6366f1", iconName: "Laptop" },
-  { id: "investment", label: "Investments", color: "#84cc16", iconName: "TrendingUp" },
-  { id: "gift", label: "Gifts & Others", color: "#f43f5e", iconName: "Gift" },
+export const DEFAULT_INCOME_CATEGORIES: CategoryInfo[] = [
+  { id: "salary", label: "Salary & Wages", color: "#10b981", iconName: "Briefcase", type: "income" },
+  { id: "freelance", label: "Freelance Work", color: "#6366f1", iconName: "Laptop", type: "income" },
+  { id: "investments", label: "Investments", color: "#84cc16", iconName: "TrendingUp", type: "income" },
+  { id: "gift", label: "Gifts & Others", color: "#f43f5e", iconName: "Gift", type: "income" },
 ];
 
-export function getCategoryInfo(categoryId: string, type: "income" | "expense" = "expense"): CategoryInfo {
-  const categories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+export function getCategoryInfo(
+  categoryId: string,
+  type: "income" | "expense" = "expense",
+  customCategories?: CategoryInfo[]
+): CategoryInfo {
+  const categories = customCategories || (type === "expense" ? DEFAULT_EXPENSE_CATEGORIES : DEFAULT_INCOME_CATEGORIES);
   return categories.find((c) => c.id === categoryId) || {
     id: "other",
     label: "Other",
     color: "#9ca3af",
     iconName: "HelpCircle",
+    type,
   };
 }
 
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number, currency: "USD" | "ETB" = "USD"): string {
+  if (currency === "ETB") {
+    return `${new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount)} ETB`;
+  }
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -63,10 +75,10 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
-export function exportToCSV(transactions: Transaction[]) {
+export function exportToCSV(transactions: Transaction[], currency: "USD" | "ETB" = "USD") {
   if (transactions.length === 0) return;
 
-  const headers = ["Date", "Title", "Type", "Category", "Amount ($)", "Notes"];
+  const headers = ["Date", "Title", "Type", "Category", `Amount (${currency})`, "Notes"];
   const rows = transactions.map((t) => [
     t.date,
     `"${t.title.replace(/"/g, '""')}"`,

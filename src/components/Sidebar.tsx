@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { LayoutDashboard, Receipt, Target, CalendarDays, Wallet, Menu, X, Calculator } from "lucide-react";
+import { LayoutDashboard, Receipt, Target, CalendarDays, Wallet, Menu, X, Calculator, LogIn, LogOut } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
-export type TabType = "dashboard" | "transactions" | "budgets" | "subscriptions" | "tax";
+export type TabType = "dashboard" | "transactions" | "budgets" | "subscriptions" | "tax" | "login";
 
 interface SidebarProps {
   activeTab: TabType;
@@ -10,18 +10,38 @@ interface SidebarProps {
   isDarkMode: boolean;
   setIsDarkMode: (val: boolean) => void;
   isOnline: boolean;
+  user: string | null;
+  onLogout: () => void;
+  currency: "USD" | "ETB";
+  setCurrency: (val: "USD" | "ETB") => void;
 }
 
-export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode, isOnline }: SidebarProps) {
+export function Sidebar({
+  activeTab,
+  setActiveTab,
+  isDarkMode,
+  setIsDarkMode,
+  isOnline,
+  user,
+  onLogout,
+  currency,
+  setCurrency,
+}: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
-  const navItems = [
-    { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard },
-    { id: "transactions" as TabType, label: "Transactions", icon: Receipt },
-    { id: "budgets" as TabType, label: "Budgets", icon: Target },
-    { id: "subscriptions" as TabType, label: "Subscriptions", icon: CalendarDays },
-    { id: "tax" as TabType, label: "Tax Calculator", icon: Calculator },
-  ];
+  // Dynamic Navigation Items based on Login state
+  const navItems = user 
+    ? [
+        { id: "dashboard" as TabType, label: "Dashboard", icon: LayoutDashboard },
+        { id: "transactions" as TabType, label: "Transactions", icon: Receipt },
+        { id: "budgets" as TabType, label: "Budgets", icon: Target },
+        { id: "subscriptions" as TabType, label: "Subscriptions", icon: CalendarDays },
+        { id: "tax" as TabType, label: "Tax Calculator", icon: Calculator },
+      ]
+    : [
+        { id: "tax" as TabType, label: "Tax Calculator", icon: Calculator },
+        { id: "login" as TabType, label: "Sign In", icon: LogIn },
+      ];
 
   const handleNavClick = (tab: TabType) => {
     setActiveTab(tab);
@@ -42,7 +62,6 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode, is
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Online/Offline status indicator */}
           <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
             isOnline 
               ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
@@ -74,7 +93,7 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode, is
               <Wallet className="h-6 w-6" />
             </div>
             <div>
-              <span className="font-black text-xl tracking-tight leading-none bg-gradient-to-r from-violet-600 to-indigo-600 dark:from-violet-400 dark:to-indigo-300 bg-clip-text text-transparent">
+              <span className="font-black text-xl tracking-tight leading-none bg-gradient-to-r from-violet-600 to-indigo-650 dark:from-violet-400 dark:to-indigo-300 bg-clip-text text-transparent">
                 Fortuna
               </span>
               <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mt-0.5">
@@ -92,7 +111,7 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode, is
                 <button
                   key={item.id}
                   onClick={() => handleNavClick(item.id)}
-                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 ${
+                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-sm font-semibold transition-all duration-200 cursor-pointer ${
                     isActive
                       ? "bg-violet-600 text-white shadow-md shadow-violet-500/20"
                       : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
@@ -108,7 +127,7 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode, is
 
         {/* Footer Config */}
         <div className="space-y-4 pt-4 border-t border-zinc-200/50 dark:border-zinc-800/50">
-          {/* Connection Status Badge */}
+          {/* Connection Status */}
           <div className="flex items-center justify-between px-2 text-xs font-semibold text-zinc-400">
             <span>Status</span>
             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border ${
@@ -121,24 +140,59 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode, is
             </span>
           </div>
 
+          {/* Currency Toggle */}
+          <div className="flex items-center justify-between px-2 text-xs font-semibold text-zinc-400">
+            <span>Currency</span>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value as "USD" | "ETB")}
+              className="h-8 px-2 rounded-lg border border-zinc-205 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-[10px] font-bold text-zinc-700 dark:text-zinc-300 focus:outline-none cursor-pointer"
+            >
+              <option value="USD">USD ($)</option>
+              <option value="ETB">ETB (Br)</option>
+            </select>
+          </div>
+
+          {/* Appearance Toggle */}
           <div className="flex items-center justify-between px-2">
             <span className="text-xs font-semibold text-zinc-400">Appearance</span>
             <ThemeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
           </div>
 
-          <div className="flex items-center gap-3 px-2">
-            <div className="h-9 w-9 rounded-full bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 flex items-center justify-center font-extrabold text-sm border border-violet-200/20">
-              E
+          {/* User Profile Info Card */}
+          {user ? (
+            <div className="flex items-center justify-between px-2 pt-2">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-full bg-violet-100 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400 flex items-center justify-center font-extrabold text-sm border border-violet-200/20">
+                  {user.slice(0, 1).toUpperCase()}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 leading-none">
+                    {user}
+                  </p>
+                  <p className="text-[10px] font-medium text-zinc-400 mt-0.5">
+                    Logged In
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onLogout}
+                className="p-2 rounded-xl text-zinc-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                title="Log Out"
+              >
+                <LogOut className="h-4.5 w-4.5" />
+              </button>
             </div>
-            <div>
-              <p className="text-xs font-bold text-zinc-900 dark:text-zinc-100 leading-none">
-                Ephrem Alemnew
+          ) : (
+            <div className="p-3 text-center bg-zinc-50 dark:bg-zinc-900/30 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
+              <p className="text-[10px] text-zinc-400 font-semibold uppercase tracking-wider">
+                Anonymous Mode
               </p>
-              <p className="text-[10px] font-medium text-zinc-400 mt-0.5">
-                Premium User
+              <p className="text-[9px] text-zinc-500 mt-0.5 leading-relaxed">
+                Log in to unlock ledger tracking
               </p>
             </div>
-          </div>
+          )}
         </div>
       </aside>
 

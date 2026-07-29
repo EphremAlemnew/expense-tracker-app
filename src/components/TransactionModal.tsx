@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Calendar, DollarSign, Tag, FileText } from "lucide-react";
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "../utils/financeUtils";
-import type { Transaction } from "../utils/financeUtils";
+import type { Transaction, CategoryInfo } from "../utils/financeUtils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -12,9 +11,16 @@ interface TransactionModalProps {
   onClose: () => void;
   onSave: (transaction: Omit<Transaction, "id"> & { id?: string }) => void;
   editingTransaction?: Transaction | null;
+  categories: CategoryInfo[];
 }
 
-export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }: TransactionModalProps) {
+export function TransactionModal({
+  isOpen,
+  onClose,
+  onSave,
+  editingTransaction,
+  categories,
+}: TransactionModalProps) {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [type, setType] = useState<"income" | "expense">("expense");
@@ -47,10 +53,10 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
   // Set default category when type changes
   useEffect(() => {
     if (!editingTransaction) {
-      const categories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
-      setCategory(categories[0]?.id || "");
+      const filtered = categories.filter((c) => c.type === type);
+      setCategory(filtered[0]?.id || "");
     }
-  }, [type, editingTransaction]);
+  }, [type, editingTransaction, categories]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +87,7 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
     onClose();
   };
 
-  const categories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const filteredCategories = categories.filter((c) => c.type === type);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -101,7 +107,7 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
               onClick={() => setType("expense")}
               className={`py-2 text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer ${
                 type === "expense"
-                  ? "bg-white dark:bg-zinc-800 text-red-500 shadow-sm border border-zinc-200/20"
+                  ? "bg-white dark:bg-zinc-800 text-red-505 shadow-sm border border-zinc-200/20"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300"
               }`}
             >
@@ -131,10 +137,10 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
                 placeholder="Rent, Grocery, Side job..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className={errors.title ? "border-red-550 focus-visible:ring-red-500/20" : ""}
+                className={errors.title ? "border-red-500 focus-visible:ring-red-500/20" : ""}
               />
             </div>
-            {errors.title && <p className="text-xs text-red-500 font-semibold">{errors.title}</p>}
+            {errors.title && <p className="text-xs text-red-550 font-semibold">{errors.title}</p>}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -152,7 +158,7 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
                   className={errors.amount ? "border-red-550 focus-visible:ring-red-500/20" : ""}
                 />
               </div>
-              {errors.amount && <p className="text-xs text-red-500 font-semibold">{errors.amount}</p>}
+              {errors.amount && <p className="text-xs text-red-550 font-semibold">{errors.amount}</p>}
             </div>
 
             {/* Date Input */}
@@ -185,14 +191,14 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
                   errors.category ? "border-red-500" : "border-zinc-200 dark:border-zinc-800"
                 } text-zinc-950 dark:text-zinc-50 appearance-none cursor-pointer`}
               >
-                {categories.map((c) => (
+                {filteredCategories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.label}
                   </option>
                 ))}
               </select>
             </div>
-            {errors.category && <p className="text-xs text-red-500 font-semibold">{errors.category}</p>}
+            {errors.category && <p className="text-xs text-red-550 font-semibold">{errors.category}</p>}
           </div>
 
           {/* Notes Input */}
@@ -210,18 +216,10 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
-            <Button
-              type="button"
-              onClick={onClose}
-              variant="outline"
-              className="flex-1"
-            >
+            <Button type="button" onClick={onClose} variant="outline" className="flex-1">
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="flex-1"
-            >
+            <Button type="submit" className="flex-1">
               Save
             </Button>
           </div>

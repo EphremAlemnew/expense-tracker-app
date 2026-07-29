@@ -22,5 +22,18 @@
     { "id": "s3", "title": "Rent Utilities", "amount": 145, "dueDate": 22, "category": "utilities" },
     { "id": "s4", "title": "Gym Membership", "amount": 60, "dueDate": 12, "category": "health" }
   ],
+  "categories": [
+    { "id": "food", "label": "Food & Dining", "color": "#f87171", "type": "expense" },
+    { "id": "utilities", "label": "Bills & Utilities", "color": "#60a5fa", "type": "expense" },
+    { "id": "entertainment", "label": "Entertainment", "color": "#c084fc", "type": "expense" },
+    { "id": "transport", "label": "Transportation", "color": "#facc15", "type": "expense" },
+    { "id": "shopping", "label": "Shopping", "color": "#f472b6", "type": "expense" },
+    { "id": "health", "label": "Health & Fitness", "color": "#34d399", "type": "expense" },
+    { "id": "other", "label": "Other Expenses", "color": "#94a3b8", "type": "expense" },
+    { "id": "salary", "label": "Salary", "color": "#10b981", "type": "income" },
+    { "id": "freelance", "label": "Freelance Work", "color": "#3b82f6", "type": "income" },
+    { "id": "investments", "label": "Investments", "color": "#f59e0b", "type": "income" },
+    { "id": "other_income", "label": "Other Income", "color": "#6b7280", "type": "income" }
+  ],
   "taxCalculations": []
 }

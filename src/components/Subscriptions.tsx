@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { CalendarDays, Trash2, Plus, Clock, CreditCard } from "lucide-react";
-import { formatCurrency, EXPENSE_CATEGORIES, getCategoryInfo } from "../utils/financeUtils";
-import type { Subscription } from "../utils/financeUtils";
+import { formatCurrency, getCategoryInfo } from "../utils/financeUtils";
+import type { Subscription, CategoryInfo } from "../utils/financeUtils";
 import { Card, CardContent } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -11,18 +11,37 @@ interface SubscriptionsProps {
   subscriptions: Subscription[];
   onSaveSubscription: (sub: Subscription) => void;
   onRemoveSubscription: (id: string) => void;
+  categories: CategoryInfo[];
+  currency: "USD" | "ETB";
 }
 
-export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubscription }: SubscriptionsProps) {
+export function Subscriptions({
+  subscriptions,
+  onSaveSubscription,
+  onRemoveSubscription,
+  categories,
+  currency,
+}: SubscriptionsProps) {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState("");
   const [dueDate, setDueDate] = useState("");
-  const [category, setCategory] = useState(EXPENSE_CATEGORIES[0]?.id || "");
+  const [category, setCategory] = useState("");
   const [error, setError] = useState("");
 
   const totalCost = useMemo(() => {
     return subscriptions.reduce((sum, s) => sum + s.amount, 0);
   }, [subscriptions]);
+
+  const expenseCats = useMemo(() => {
+    return categories.filter((c) => c.type === "expense");
+  }, [categories]);
+
+  // Set default category
+  useMemo(() => {
+    if (expenseCats.length > 0 && !expenseCats.some((c) => c.id === category)) {
+      setCategory(expenseCats[0].id);
+    }
+  }, [expenseCats, category]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,7 +85,6 @@ export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubsc
     if (currentDay < dueDay) {
       return dueDay - currentDay;
     }
-    // Calculates days remaining when date rolls over to next month
     const daysInCurrentMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
     return (daysInCurrentMonth - currentDay) + dueDay;
   };
@@ -86,10 +104,10 @@ export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubsc
         
         {/* Total Cost Badge */}
         {subscriptions.length > 0 && (
-          <div className="h-10 px-4 rounded-xl border border-zinc-205 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex items-center gap-2 shadow-sm shrink-0">
+          <div className="h-10 px-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 flex items-center gap-2 shadow-sm shrink-0">
             <CreditCard className="h-4 w-4 text-violet-500" />
             <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
-              Total: <span className="text-violet-650 dark:text-violet-400">{formatCurrency(totalCost)}</span>/mo
+              Total: <span className="text-violet-650 dark:text-violet-400">{formatCurrency(totalCost, currency)}</span>/mo
             </span>
           </div>
         )}
@@ -119,7 +137,7 @@ export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubsc
               <div className="grid grid-cols-2 gap-4">
                 {/* Cost */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="sub-cost">Cost ($)</Label>
+                  <Label htmlFor="sub-cost">Cost</Label>
                   <Input
                     id="sub-cost"
                     type="text"
@@ -151,7 +169,7 @@ export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubsc
                   onChange={(e) => setCategory(e.target.value)}
                   className="w-full h-11 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500/30 cursor-pointer appearance-none"
                 >
-                  {EXPENSE_CATEGORIES.map((c) => (
+                  {expenseCats.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.label}
                     </option>
@@ -161,10 +179,7 @@ export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubsc
 
               {error && <p className="text-xs text-red-500 font-semibold">{error}</p>}
 
-              <Button
-                type="submit"
-                className="w-full"
-              >
+              <Button type="submit" className="w-full">
                 <Plus className="h-4 w-4 mr-1" /> Add Bill
               </Button>
             </form>
@@ -183,7 +198,7 @@ export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubsc
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {subscriptions.map((s) => {
                     const daysRemaining = getDaysRemaining(s.dueDate);
-                    const info = getCategoryInfo(s.category, "expense");
+                    const info = getCategoryInfo(s.category, "expense", categories);
 
                     // Determine color-coded countdown warning badge
                     let badgeClass = "bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400 border-zinc-200/50 dark:border-zinc-800/50";
@@ -193,10 +208,10 @@ export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubsc
                       badgeClass = "bg-red-500/10 text-red-500 border-red-500/20 font-bold animate-pulse";
                       badgeText = "Due Today";
                     } else if (daysRemaining === 1) {
-                      badgeClass = "bg-orange-500/10 text-orange-505 border-orange-500/20 font-bold";
+                      badgeClass = "bg-orange-500/10 text-orange-500 border-orange-500/20 font-bold";
                       badgeText = "Due Tomorrow";
                     } else if (daysRemaining <= 5) {
-                      badgeClass = "bg-amber-500/10 text-amber-550 border-amber-500/20 font-semibold";
+                      badgeClass = "bg-amber-500/10 text-amber-500 border-amber-500/20 font-semibold";
                       badgeText = `Due in ${daysRemaining} days`;
                     }
 
@@ -229,7 +244,7 @@ export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubsc
                             onClick={() => onRemoveSubscription(s.id)}
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 rounded-lg hover:text-red-550 hover:bg-red-500/10"
+                            className="h-8 w-8 rounded-lg hover:text-red-555 hover:bg-red-500/10"
                             title="Delete recurring bill record"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -240,7 +255,7 @@ export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubsc
                           <div>
                             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">Monthly Cost</p>
                             <p className="font-black text-sm text-zinc-900 dark:text-zinc-100 mt-0.5 tracking-tight">
-                              {formatCurrency(s.amount)}
+                              {formatCurrency(s.amount, currency)}
                             </p>
                           </div>
 
@@ -261,7 +276,7 @@ export function Subscriptions({ subscriptions, onSaveSubscription, onRemoveSubsc
               ) : (
                 <div className="p-12 text-center text-zinc-400 font-medium space-y-2 border border-dashed border-zinc-200 dark:border-zinc-800 rounded-2xl">
                   <p className="text-xs">No recurring bills logged yet</p>
-                  <p className="text-[10px] text-zinc-505 max-w-xs mx-auto">
+                  <p className="text-[10px] text-zinc-500 max-w-xs mx-auto">
                     Add monthly utilities, software packages, rent or commitments to track countdowns.
                   </p>
                 </div>
