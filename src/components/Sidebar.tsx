@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { LayoutDashboard, Receipt, Target, CalendarDays, Wallet, Menu, X } from "lucide-react";
+import { LayoutDashboard, Receipt, Target, CalendarDays, Wallet, Menu, X, Calculator } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
-export type TabType = "dashboard" | "transactions" | "budgets" | "subscriptions";
+export type TabType = "dashboard" | "transactions" | "budgets" | "subscriptions" | "tax";
 
 interface SidebarProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
   isDarkMode: boolean;
   setIsDarkMode: (val: boolean) => void;
+  isOnline: boolean;
 }
 
-export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode }: SidebarProps) {
+export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode, isOnline }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const navItems = [
@@ -19,6 +20,7 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode }: 
     { id: "transactions" as TabType, label: "Transactions", icon: Receipt },
     { id: "budgets" as TabType, label: "Budgets", icon: Target },
     { id: "subscriptions" as TabType, label: "Subscriptions", icon: CalendarDays },
+    { id: "tax" as TabType, label: "Tax Calculator", icon: Calculator },
   ];
 
   const handleNavClick = (tab: TabType) => {
@@ -38,12 +40,25 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode }: 
             Fortuna
           </span>
         </div>
-        <button
-          onClick={() => setIsOpen(!isOpen)}
-          className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
-        >
-          {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        
+        <div className="flex items-center gap-3">
+          {/* Online/Offline status indicator */}
+          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+            isOnline 
+              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
+              : "bg-amber-500/10 text-amber-550 border-amber-500/20"
+          }`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`} />
+            {isOnline ? "Syncing" : "Offline"}
+          </span>
+          
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400"
+          >
+            {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </header>
 
       {/* Sidebar Container */}
@@ -93,6 +108,19 @@ export function Sidebar({ activeTab, setActiveTab, isDarkMode, setIsDarkMode }: 
 
         {/* Footer Config */}
         <div className="space-y-4 pt-4 border-t border-zinc-200/50 dark:border-zinc-800/50">
+          {/* Connection Status Badge */}
+          <div className="flex items-center justify-between px-2 text-xs font-semibold text-zinc-400">
+            <span>Status</span>
+            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border ${
+              isOnline 
+                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
+                : "bg-amber-500/10 text-amber-550 border-amber-500/20"
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`} />
+              {isOnline ? "Connected" : "Offline"}
+            </span>
+          </div>
+
           <div className="flex items-center justify-between px-2">
             <span className="text-xs font-semibold text-zinc-400">Appearance</span>
             <ThemeToggle isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />

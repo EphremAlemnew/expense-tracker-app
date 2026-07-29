@@ -1,0 +1,26 @@
+{
+  "transactions": [
+    { "id": "t1", "title": "Monthly Salary", "amount": 4800, "type": "income", "category": "salary", "date": "2026-07-01", "notes": "Main salary payment" },
+    { "id": "t2", "title": "Monthly Home Rent", "amount": 1200, "type": "expense", "category": "utilities", "date": "2026-07-02", "notes": "Apartment rental" },
+    { "id": "t3", "title": "Weekly Groceries", "amount": 165.4, "type": "expense", "category": "food", "date": "2026-07-05" },
+    { "id": "t4", "title": "Website Design Project", "amount": 650, "type": "income", "category": "freelance", "date": "2026-07-10", "notes": "Logo & Landing page deliverable" },
+    { "id": "t5", "title": "Gym Membership", "amount": 60, "type": "expense", "category": "health", "date": "2026-07-12", "notes": "Auto-recurring payment" },
+    { "id": "t6", "title": "Steakhouse Dinner", "amount": 84.5, "type": "expense", "category": "food", "date": "2026-07-15" },
+    { "id": "t7", "title": "Summer Shoes", "amount": 110, "type": "expense", "category": "shopping", "date": "2026-07-18" },
+    { "id": "t8", "title": "Electric & Water Bill", "amount": 145, "type": "expense", "category": "utilities", "date": "2026-07-22" },
+    { "id": "t9", "title": "Concert Ticket", "amount": 75, "type": "expense", "category": "entertainment", "date": "2026-07-25", "notes": "Live band gig" },
+    { "id": "t10", "title": "Uber Cab Ride", "amount": 24, "type": "expense", "category": "transport", "date": "2026-07-28" }
+  ],
+  "budgets": [
+    { "category": "food", "limit": 300 },
+    { "category": "entertainment", "limit": 100 },
+    { "category": "utilities", "limit": 1400 }
+  ],
+  "subscriptions": [
+    { "id": "s1", "title": "Netflix Premium", "amount": 15.99, "dueDate": 10, "category": "entertainment" },
+    { "id": "s2", "title": "Spotify Family", "amount": 16.99, "dueDate": 15, "category": "entertainment" },
+    { "id": "s3", "title": "Rent Utilities", "amount": 145, "dueDate": 22, "category": "utilities" },
+    { "id": "s4", "title": "Gym Membership", "amount": 60, "dueDate": 12, "category": "health" }
+  ],
+  "taxCalculations": []
+}

@@ -5,7 +5,10 @@ import { TransactionsList } from "./components/TransactionsList";
 import { BudgetsManager } from "./components/BudgetsManager";
 import { Subscriptions } from "./components/Subscriptions";
 import { TransactionModal } from "./components/TransactionModal";
+import { TaxCalculator } from "./components/TaxCalculator";
 import type { Transaction, Budget, Subscription } from "./utils/financeUtils";
+
+const SERVER_URL = "http://localhost:3001/api";
 
 const MOCK_TRANSACTIONS: Transaction[] = [
   { id: "t1", title: "Monthly Salary", amount: 4800, type: "income", category: "salary", date: "2026-07-01", notes: "Main salary payment" },
@@ -35,24 +38,14 @@ const MOCK_SUBSCRIPTIONS: Subscription[] = [
 
 export default function App() {
   // 1. Core States
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    const saved = localStorage.getItem("fortuna_transactions");
-    return saved ? JSON.parse(saved) : MOCK_TRANSACTIONS;
-  });
-
-  const [budgets, setBudgets] = useState<Budget[]>(() => {
-    const saved = localStorage.getItem("fortuna_budgets");
-    return saved ? JSON.parse(saved) : MOCK_BUDGETS;
-  });
-
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => {
-    const saved = localStorage.getItem("fortuna_subscriptions");
-    return saved ? JSON.parse(saved) : MOCK_SUBSCRIPTIONS;
-  });
-
+  const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
+  const [budgets, setBudgets] = useState<Budget[]>(MOCK_BUDGETS);
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>(MOCK_SUBSCRIPTIONS);
+  
   const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isOnline, setIsOnline] = useState(false);
 
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -61,19 +54,40 @@ export default function App() {
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
 
-  // 2. Local Storage Synchronizations
+  // 2. Fetch Data from API on load with localStorage fallback
   useEffect(() => {
-    localStorage.setItem("fortuna_transactions", JSON.stringify(transactions));
-  }, [transactions]);
+    async function initFetch() {
+      try {
+        const response = await fetch(`${SERVER_URL}/transactions`);
+        if (response.ok) {
+          const txs = await response.json();
+          setTransactions(txs);
+          setIsOnline(true);
+          
+          // Fetch budgets and subscriptions
+          const budgetRes = await fetch(`${SERVER_URL}/budgets`);
+          if (budgetRes.ok) setBudgets(await budgetRes.json());
+          
+          const subRes = await fetch(`${SERVER_URL}/subscriptions`);
+          if (subRes.ok) setSubscriptions(await subRes.json());
+        }
+      } catch (err) {
+        console.warn("Backend server unreachable. Operating in Local Storage fallback mode.", err);
+        setIsOnline(false);
+        
+        // Fallback loads
+        const savedTx = localStorage.getItem("fortuna_transactions");
+        if (savedTx) setTransactions(JSON.parse(savedTx));
+        const savedBudgets = localStorage.getItem("fortuna_budgets");
+        if (savedBudgets) setBudgets(JSON.parse(savedBudgets));
+        const savedSubs = localStorage.getItem("fortuna_subscriptions");
+        if (savedSubs) setSubscriptions(JSON.parse(savedSubs));
+      }
+    }
+    initFetch();
+  }, []);
 
-  useEffect(() => {
-    localStorage.setItem("fortuna_budgets", JSON.stringify(budgets));
-  }, [budgets]);
-
-  useEffect(() => {
-    localStorage.setItem("fortuna_subscriptions", JSON.stringify(subscriptions));
-  }, [subscriptions]);
-
+  // Theme effect
   useEffect(() => {
     localStorage.setItem("fortuna_dark_mode", String(isDarkMode));
     const root = document.documentElement;
@@ -85,19 +99,30 @@ export default function App() {
   }, [isDarkMode]);
 
   // 3. Handlers
-  const handleSaveTransaction = (transactionData: Omit<Transaction, "id"> & { id?: string }) => {
-    if (transactionData.id) {
-      // Editing Mode
-      setTransactions((prev) =>
-        prev.map((t) => (t.id === transactionData.id ? (transactionData as Transaction) : t)),
-      );
-    } else {
-      // Create Mode
-      const newTransaction: Transaction = {
-        ...transactionData,
-        id: Math.random().toString(36).substring(2, 9),
-      };
-      setTransactions((prev) => [newTransaction, ...prev]);
+  const handleSaveTransaction = async (transactionData: Omit<Transaction, "id"> & { id?: string }) => {
+    let savedTx = { ...transactionData };
+    if (!savedTx.id) {
+      savedTx.id = Math.random().toString(36).substring(2, 9);
+    }
+    
+    // Optimistic UI update
+    const updatedTransactions = transactionData.id
+      ? transactions.map((t) => (t.id === transactionData.id ? (savedTx as Transaction) : t))
+      : [savedTx as Transaction, ...transactions];
+      
+    setTransactions(updatedTransactions);
+    localStorage.setItem("fortuna_transactions", JSON.stringify(updatedTransactions));
+    
+    if (isOnline) {
+      try {
+        await fetch(`${SERVER_URL}/transactions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(savedTx),
+        });
+      } catch (err) {
+        console.error("Failed to sync transaction", err);
+      }
     }
     setEditingTransaction(null);
   };
@@ -107,46 +132,112 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteTransaction = (id: string) => {
+  const handleDeleteTransaction = async (id: string) => {
     if (confirm("Are you sure you want to delete this transaction record?")) {
-      setTransactions((prev) => prev.filter((t) => t.id !== id));
+      const updated = transactions.filter((t) => t.id !== id);
+      setTransactions(updated);
+      localStorage.setItem("fortuna_transactions", JSON.stringify(updated));
+      
+      if (isOnline) {
+        try {
+          await fetch(`${SERVER_URL}/transactions/${id}`, { method: "DELETE" });
+        } catch (err) {
+          console.error("Failed to delete transaction", err);
+        }
+      }
     }
   };
 
-  const handleClearAllTransactions = () => {
+  const handleClearAllTransactions = async () => {
     if (confirm("Are you sure you want to clear the entire ledger? This action is irreversible.")) {
       setTransactions([]);
-    }
-  };
-
-  const handleSaveBudget = (budget: Budget) => {
-    setBudgets((prev) => {
-      const idx = prev.findIndex((b) => b.category === budget.category);
-      if (idx > -1) {
-        return prev.map((b, i) => (i === idx ? budget : b));
-      } else {
-        return [...prev, budget];
+      localStorage.setItem("fortuna_transactions", JSON.stringify([]));
+      
+      if (isOnline) {
+        try {
+          await fetch(`${SERVER_URL}/transactions`, { method: "DELETE" });
+        } catch (err) {
+          console.error("Failed to clear transactions", err);
+        }
       }
-    });
+    }
   };
 
-  const handleRemoveBudget = (category: string) => {
+  const handleSaveBudget = async (budget: Budget) => {
+    const updated = budgets.some((b) => b.category === budget.category)
+      ? budgets.map((b) => (b.category === budget.category ? budget : b))
+      : [...budgets, budget];
+      
+    setBudgets(updated);
+    localStorage.setItem("fortuna_budgets", JSON.stringify(updated));
+    
+    if (isOnline) {
+      try {
+        await fetch(`${SERVER_URL}/budgets`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(budget),
+        });
+      } catch (err) {
+        console.error("Failed to sync budget", err);
+      }
+    }
+  };
+
+  const handleRemoveBudget = async (category: string) => {
     if (confirm("Are you sure you want to delete the budget limit for this category?")) {
-      setBudgets((prev) => prev.filter((b) => b.category !== category));
+      const updated = budgets.filter((b) => b.category !== category);
+      setBudgets(updated);
+      localStorage.setItem("fortuna_budgets", JSON.stringify(updated));
+      
+      if (isOnline) {
+        try {
+          await fetch(`${SERVER_URL}/budgets/${category}`, { method: "DELETE" });
+        } catch (err) {
+          console.error("Failed to delete budget", err);
+        }
+      }
     }
   };
 
-  const handleSaveSubscription = (sub: Subscription) => {
-    setSubscriptions((prev) => [...prev, sub]);
+  const handleSaveSubscription = async (sub: Subscription) => {
+    const updated = [...subscriptions, sub];
+    setSubscriptions(updated);
+    localStorage.setItem("fortuna_subscriptions", JSON.stringify(updated));
+    
+    if (isOnline) {
+      try {
+        await fetch(`${SERVER_URL}/subscriptions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sub),
+        });
+      } catch (err) {
+        console.error("Failed to sync subscription", err);
+      }
+    }
   };
 
-  const handleRemoveSubscription = (id: string) => {
+  const handleRemoveSubscription = async (id: string) => {
     if (confirm("Are you sure you want to delete this subscription track?")) {
-      setSubscriptions((prev) => prev.filter((s) => s.id !== id));
+      const updated = subscriptions.filter((s) => s.id !== id);
+      setSubscriptions(updated);
+      localStorage.setItem("fortuna_subscriptions", JSON.stringify(updated));
+      
+      if (isOnline) {
+        try {
+          await fetch(`${SERVER_URL}/subscriptions/${id}`, { method: "DELETE" });
+        } catch (err) {
+          console.error("Failed to delete subscription", err);
+        }
+      }
     }
   };
 
-  // Navigates tabs dynamically from components
+  const handleQuickAddIncome = (title: string, amount: number, type: "income" | "expense", category: string, date: string) => {
+    handleSaveTransaction({ title, amount, type, category, date });
+  };
+
   const handleTabNavigation = (tab: "transactions" | "budgets") => {
     setActiveTab(tab);
   };
@@ -159,6 +250,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         isDarkMode={isDarkMode}
         setIsDarkMode={setIsDarkMode}
+        isOnline={isOnline}
       />
 
       {/* Main Panel Viewport */}
@@ -199,6 +291,15 @@ export default function App() {
             subscriptions={subscriptions}
             onSaveSubscription={handleSaveSubscription}
             onRemoveSubscription={handleRemoveSubscription}
+          />
+        )}
+
+        {activeTab === "tax" && (
+          <TaxCalculator
+            onAddTransaction={handleQuickAddIncome}
+            isDarkMode={isDarkMode}
+            serverUrl={SERVER_URL}
+            isOnline={isOnline}
           />
         )}
       </main>

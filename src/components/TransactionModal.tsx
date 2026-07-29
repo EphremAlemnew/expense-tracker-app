@@ -1,7 +1,11 @@
 import { useState, useEffect } from "react";
-import { X, Calendar, DollarSign, Tag, FileText } from "lucide-react";
+import { Calendar, DollarSign, Tag, FileText } from "lucide-react";
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from "../utils/financeUtils";
 import type { Transaction } from "../utils/financeUtils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
+import { Button } from "./ui/button";
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -48,8 +52,6 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
     }
   }, [type, editingTransaction]);
 
-  if (!isOpen) return null;
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newErrors: Record<string, string> = {};
@@ -82,39 +84,25 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
   const categories = type === "expense" ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        onClick={onClose}
-        className="fixed inset-0 bg-zinc-950/40 dark:bg-black/60 backdrop-blur-sm transition-opacity duration-300"
-      />
-
-      {/* Modal Card */}
-      <div className="relative w-full max-w-lg glass-card rounded-3xl overflow-hidden shadow-2xl z-10 animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="flex justify-between items-center px-6 py-5 border-b border-zinc-200/50 dark:border-zinc-800/50">
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
             {editingTransaction ? "Edit Transaction" : "New Transaction"}
-          </h2>
-          <button 
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-400 hover:text-zinc-650 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+          </DialogTitle>
+        </DialogHeader>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5">
           {/* Type Segmented Switch */}
           <div className="grid grid-cols-2 p-1 bg-zinc-100 dark:bg-zinc-900 rounded-2xl shadow-inner">
             <button
               type="button"
               onClick={() => setType("expense")}
-              className={`py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
+              className={`py-2 text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer ${
                 type === "expense"
-                  ? "bg-white dark:bg-zinc-800 text-red-500 shadow-sm border border-zinc-250/20"
-                  : "text-zinc-500 hover:text-zinc-850 dark:hover:text-zinc-300"
+                  ? "bg-white dark:bg-zinc-800 text-red-500 shadow-sm border border-zinc-200/20"
+                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300"
               }`}
             >
               Expense
@@ -122,10 +110,10 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
             <button
               type="button"
               onClick={() => setType("income")}
-              className={`py-2 text-sm font-bold rounded-xl transition-all duration-200 ${
+              className={`py-2 text-sm font-bold rounded-xl transition-all duration-200 cursor-pointer ${
                 type === "income"
-                  ? "bg-white dark:bg-zinc-800 text-emerald-500 shadow-sm border border-zinc-250/20"
-                  : "text-zinc-500 hover:text-zinc-850 dark:hover:text-zinc-300"
+                  ? "bg-white dark:bg-zinc-800 text-emerald-500 shadow-sm border border-zinc-200/20"
+                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300"
               }`}
             >
               Income
@@ -134,19 +122,16 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
 
           {/* Title Input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-              Title
-            </label>
+            <Label htmlFor="tx-title">Title</Label>
             <div className="relative">
               <InputIcon icon={FileText} />
-              <input
+              <Input
+                id="tx-title"
                 type="text"
                 placeholder="Rent, Grocery, Side job..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className={`w-full h-11 pl-10 pr-4 rounded-xl bg-white dark:bg-zinc-950 border text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 ${
-                  errors.title ? "border-red-500" : "border-zinc-200 dark:border-zinc-800"
-                } text-zinc-900 dark:text-zinc-100`}
+                className={errors.title ? "border-red-550 focus-visible:ring-red-500/20" : ""}
               />
             </div>
             {errors.title && <p className="text-xs text-red-500 font-semibold">{errors.title}</p>}
@@ -155,19 +140,16 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Amount Input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                Amount
-              </label>
+              <Label htmlFor="tx-amount">Amount</Label>
               <div className="relative">
                 <InputIcon icon={DollarSign} />
-                <input
+                <Input
+                  id="tx-amount"
                   type="text"
                   placeholder="0.00"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className={`w-full h-11 pl-10 pr-4 rounded-xl bg-white dark:bg-zinc-950 border text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 ${
-                    errors.amount ? "border-red-500" : "border-zinc-200 dark:border-zinc-800"
-                  } text-zinc-900 dark:text-zinc-100`}
+                  className={errors.amount ? "border-red-550 focus-visible:ring-red-500/20" : ""}
                 />
               </div>
               {errors.amount && <p className="text-xs text-red-500 font-semibold">{errors.amount}</p>}
@@ -175,18 +157,15 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
 
             {/* Date Input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                Date
-              </label>
+              <Label htmlFor="tx-date">Date</Label>
               <div className="relative">
                 <InputIcon icon={Calendar} />
-                <input
+                <Input
+                  id="tx-date"
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className={`w-full h-11 pl-10 pr-4 rounded-xl bg-white dark:bg-zinc-950 border text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 ${
-                    errors.date ? "border-red-500" : "border-zinc-200 dark:border-zinc-800"
-                  } text-zinc-900 dark:text-zinc-100`}
+                  className={errors.date ? "border-red-550 focus-visible:ring-red-500/20" : ""}
                 />
               </div>
               {errors.date && <p className="text-xs text-red-500 font-semibold">{errors.date}</p>}
@@ -195,17 +174,16 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
 
           {/* Category Input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-              Category
-            </label>
+            <Label htmlFor="tx-cat">Category</Label>
             <div className="relative">
               <InputIcon icon={Tag} />
               <select
+                id="tx-cat"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 className={`w-full h-11 pl-10 pr-4 rounded-xl bg-white dark:bg-zinc-950 border text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 ${
                   errors.category ? "border-red-500" : "border-zinc-200 dark:border-zinc-800"
-                } text-zinc-900 dark:text-zinc-100 appearance-none`}
+                } text-zinc-950 dark:text-zinc-50 appearance-none cursor-pointer`}
               >
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -219,43 +197,43 @@ export function TransactionModal({ isOpen, onClose, onSave, editingTransaction }
 
           {/* Notes Input */}
           <div className="space-y-1.5">
-            <label className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-              Notes (Optional)
-            </label>
+            <Label htmlFor="tx-notes">Notes (Optional)</Label>
             <textarea
-              placeholder="Add details, shopping list or description..."
+              id="tx-notes"
+              placeholder="Add details or description..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full p-3 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 text-zinc-900 dark:text-zinc-100 resize-none"
+              className="w-full p-3 rounded-xl bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 text-zinc-950 dark:text-zinc-50 resize-none"
             />
           </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-2">
-            <button
+            <Button
               type="button"
               onClick={onClose}
-              className="flex-1 py-3 text-sm font-semibold rounded-2xl border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900 text-zinc-700 dark:text-zinc-300 transition-colors"
+              variant="outline"
+              className="flex-1"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              className="flex-1 py-3 text-sm font-semibold rounded-2xl bg-gradient-to-tr from-violet-600 to-indigo-500 text-white hover:opacity-95 shadow-md shadow-violet-500/10 transition-opacity"
+              className="flex-1"
             >
               Save
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
 function InputIcon({ icon: Icon }: { icon: React.ComponentType<{ className?: string }> }) {
   return (
-    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none">
+    <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 dark:text-zinc-500 pointer-events-none z-10">
       <Icon className="h-4 w-4" />
     </div>
   );

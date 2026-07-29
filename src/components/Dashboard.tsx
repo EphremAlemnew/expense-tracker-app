@@ -3,6 +3,9 @@ import ReactECharts from "echarts-for-react";
 import { Wallet, TrendingUp, TrendingDown, Target, AlertCircle } from "lucide-react";
 import { formatCurrency, EXPENSE_CATEGORIES, getCategoryInfo } from "../utils/financeUtils";
 import type { Transaction, Budget } from "../utils/financeUtils";
+import { Card, CardContent } from "./ui/card";
+import { Progress } from "./ui/progress";
+import { Button } from "./ui/button";
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -223,201 +226,217 @@ export function Dashboard({ transactions, budgets, onNavigateToTab, isDarkMode }
       {/* 2. Summaries Row */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Net Balance Card */}
-        <div className="glass-card p-6 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[140px] bg-gradient-to-tr from-violet-500/10 to-indigo-500/5">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
-          <div className="flex justify-between items-start text-zinc-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Balance</span>
-            <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400">
-              <Wallet className="h-4.5 w-4.5" />
+        <Card className="relative overflow-hidden flex flex-col justify-between min-h-[140px] bg-gradient-to-tr from-violet-500/10 to-indigo-500/5">
+          <CardContent className="p-6 h-full flex flex-col justify-between">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
+            <div className="flex justify-between items-start text-zinc-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Total Balance</span>
+              <div className="p-2 rounded-xl bg-violet-100 dark:bg-violet-950/40 text-violet-600 dark:text-violet-400">
+                <Wallet className="h-4.5 w-4.5" />
+              </div>
             </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
-              {formatCurrency(stats.balance)}
-            </h3>
-            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">
-              Active ledger balance
-            </p>
-          </div>
-        </div>
+            <div>
+              <h3 className="text-2xl font-black tracking-tight text-zinc-900 dark:text-zinc-50 leading-none">
+                {formatCurrency(stats.balance)}
+              </h3>
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">
+                Active ledger balance
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Total Income Card */}
-        <div className="glass-card p-6 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[140px] bg-gradient-to-tr from-emerald-500/10 to-teal-500/5">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
-          <div className="flex justify-between items-start text-zinc-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Income</span>
-            <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
-              <TrendingUp className="h-4.5 w-4.5" />
+        <Card className="relative overflow-hidden flex flex-col justify-between min-h-[140px] bg-gradient-to-tr from-emerald-500/10 to-teal-500/5">
+          <CardContent className="p-6 h-full flex flex-col justify-between">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
+            <div className="flex justify-between items-start text-zinc-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Total Income</span>
+              <div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400">
+                <TrendingUp className="h-4.5 w-4.5" />
+              </div>
             </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-black tracking-tight text-emerald-600 dark:text-emerald-400 leading-none">
-              {formatCurrency(stats.income)}
-            </h3>
-            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">
-              Earnings bookmarked
-            </p>
-          </div>
-        </div>
+            <div>
+              <h3 className="text-2xl font-black tracking-tight text-emerald-650 dark:text-emerald-450 leading-none">
+                {formatCurrency(stats.income)}
+              </h3>
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">
+                Earnings bookmarked
+              </p>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Total Expense Card */}
-        <div className="glass-card p-6 rounded-3xl relative overflow-hidden flex flex-col justify-between min-h-[140px] bg-gradient-to-tr from-red-500/10 to-orange-500/5">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
-          <div className="flex justify-between items-start text-zinc-400">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Expense</span>
-            <div className="p-2 rounded-xl bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400">
-              <TrendingDown className="h-4.5 w-4.5" />
+        <Card className="relative overflow-hidden flex flex-col justify-between min-h-[140px] bg-gradient-to-tr from-red-500/10 to-orange-500/5">
+          <CardContent className="p-6 h-full flex flex-col justify-between">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />
+            <div className="flex justify-between items-start text-zinc-400">
+              <span className="text-xs font-bold uppercase tracking-wider">Total Expense</span>
+              <div className="p-2 rounded-xl bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400">
+                <TrendingDown className="h-4.5 w-4.5" />
+              </div>
             </div>
-          </div>
-          <div>
-            <h3 className="text-2xl font-black tracking-tight text-red-500 dark:text-red-400 leading-none">
-              {formatCurrency(stats.expenses)}
-            </h3>
-            <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">
-              Debits recorded
-            </p>
-          </div>
-        </div>
+            <div>
+              <h3 className="text-2xl font-black tracking-tight text-red-500 dark:text-red-400 leading-none">
+                {formatCurrency(stats.expenses)}
+              </h3>
+              <p className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider mt-1">
+                Debits recorded
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* 3. Graphs Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Daily spending graph */}
-        <div className="glass-card p-6 rounded-3xl lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-              Spending Trend (Active Days)
-            </h3>
-          </div>
-          {spendingTrend.dates.length > 0 ? (
-            <ReactECharts option={trendChartOption} style={{ height: "230px" }} />
-          ) : (
-            <div className="h-[230px] flex items-center justify-center text-zinc-400 text-xs font-medium">
-              No transactions recorded for trend details
+        <Card className="lg:col-span-2">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+                Spending Trend (Active Days)
+              </h3>
             </div>
-          )}
-        </div>
+            {spendingTrend.dates.length > 0 ? (
+              <ReactECharts option={trendChartOption} style={{ height: "230px" }} />
+            ) : (
+              <div className="h-[230px] flex items-center justify-center text-zinc-400 text-xs font-medium">
+                No transactions recorded for trend details
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Expenses by category breakdown */}
-        <div className="glass-card p-6 rounded-3xl space-y-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-            Expense Allocation
-          </h3>
-          {expenseByCategory.length > 0 ? (
-            <ReactECharts option={categoryChartOption} style={{ height: "230px" }} />
-          ) : (
-            <div className="h-[230px] flex items-center justify-center text-zinc-400 text-xs font-medium">
-              No expense data recorded
-            </div>
-          )}
-        </div>
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+              Expense Allocation
+            </h3>
+            {expenseByCategory.length > 0 ? (
+              <ReactECharts option={categoryChartOption} style={{ height: "230px" }} />
+            ) : (
+              <div className="h-[230px] flex items-center justify-center text-zinc-400 text-xs font-medium">
+                No expense data recorded
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* 4. Split Alerts & Recent Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Budget Health Monitoring */}
-        <div className="glass-card p-6 rounded-3xl lg:col-span-1 space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
-                <Target className="h-4 w-4 text-violet-500" /> Budget Alerts
-              </h3>
-              <button 
-                onClick={() => onNavigateToTab("budgets")}
-                className="text-[10px] font-bold text-violet-600 dark:text-violet-400 hover:underline uppercase"
-              >
-                Manage
-              </button>
-            </div>
-            
-            {budgetAlerts.length > 0 ? (
-              <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
-                {budgetAlerts.map((b) => (
-                  <div key={b.category} className="space-y-1">
-                    <div className="flex justify-between text-xs font-semibold">
-                      <span className="text-zinc-800 dark:text-zinc-200">{b.category}</span>
-                      <span className={`${b.percent >= 100 ? "text-red-500" : "text-amber-500"}`}>
-                        {Math.round(b.percent)}%
-                      </span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-zinc-100 dark:bg-zinc-900 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${b.percent >= 100 ? "bg-red-500" : "bg-amber-500"}`}
-                        style={{ width: `${Math.min(b.percent, 100)}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-[10px] text-zinc-400 font-semibold">
-                      <span>Spent: {formatCurrency(b.spent)}</span>
-                      <span>Limit: {formatCurrency(b.limit)}</span>
-                    </div>
-                  </div>
-                ))}
+        <Card className="lg:col-span-1">
+          <CardContent className="p-6 h-full flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
+                  <Target className="h-4 w-4 text-violet-500" /> Budget Alerts
+                </h3>
+                <Button 
+                  onClick={() => onNavigateToTab("budgets")}
+                  variant="link"
+                  size="sm"
+                  className="h-auto p-0 font-bold uppercase text-[10px]"
+                >
+                  Manage
+                </Button>
               </div>
-            ) : (
-              <div className="h-[180px] flex flex-col items-center justify-center text-center">
-                <div className="p-3 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-800 text-zinc-400 mb-2">
-                  <AlertCircle className="h-5 w-5 text-zinc-400" />
-                </div>
-                <p className="text-xs text-zinc-400 font-medium">All budgets healthy or unconfigured</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Recent transaction rows */}
-        <div className="glass-card p-6 rounded-3xl lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
-              Recent Transactions
-            </h3>
-            <button
-              onClick={() => onNavigateToTab("transactions")}
-              className="text-[10px] font-bold text-violet-600 dark:text-violet-400 hover:underline uppercase"
-            >
-              View Ledger
-            </button>
-          </div>
-
-          {topTransactions.length > 0 ? (
-            <div className="divide-y divide-zinc-150/40 dark:divide-zinc-800/40">
-              {topTransactions.map((t) => {
-                const info = getCategoryInfo(t.category, t.type);
-                return (
-                  <div key={t.id} className="py-3 flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
-                        style={{ backgroundColor: info.color }}
-                      >
-                        {/* Dynamic category colors */}
-                        <span className="font-extrabold text-[10px] uppercase">
-                          {t.category.slice(0, 2)}
+              
+              {budgetAlerts.length > 0 ? (
+                <div className="space-y-3.5 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
+                  {budgetAlerts.map((b) => (
+                    <div key={b.category} className="space-y-1">
+                      <div className="flex justify-between text-xs font-semibold">
+                        <span className="text-zinc-800 dark:text-zinc-200">{b.category}</span>
+                        <span className={`${b.percent >= 100 ? "text-red-500" : "text-amber-500"}`}>
+                          {Math.round(b.percent)}%
                         </span>
                       </div>
-                      <div>
-                        <p className="font-bold text-zinc-850 dark:text-zinc-100 leading-tight">
-                          {t.title}
-                        </p>
-                        <p className="text-[10px] font-semibold text-zinc-400 mt-0.5 uppercase tracking-wider">
-                          {info.label} • {new Date(t.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                      <Progress
+                        value={Math.min(b.percent, 100)}
+                        indicatorClassName={b.percent >= 100 ? "bg-red-500" : "bg-amber-500"}
+                        className="h-1.5"
+                      />
+                      <div className="flex justify-between text-[10px] text-zinc-400 font-semibold">
+                        <span>Spent: {formatCurrency(b.spent)}</span>
+                        <span>Limit: {formatCurrency(b.limit)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="h-[180px] flex flex-col items-center justify-center text-center">
+                  <div className="p-3 rounded-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-150 dark:border-zinc-850 text-zinc-400 mb-2">
+                    <AlertCircle className="h-5 w-5 text-zinc-400" />
+                  </div>
+                  <p className="text-xs text-zinc-400 font-medium">All budgets healthy or unconfigured</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent transaction rows */}
+        <Card className="lg:col-span-2">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500">
+                Recent Transactions
+              </h3>
+              <Button
+                onClick={() => onNavigateToTab("transactions")}
+                variant="link"
+                size="sm"
+                className="h-auto p-0 font-bold uppercase text-[10px]"
+              >
+                View Ledger
+              </Button>
+            </div>
+
+            {topTransactions.length > 0 ? (
+              <div className="divide-y divide-zinc-150/40 dark:divide-zinc-800/40">
+                {topTransactions.map((t) => {
+                  const info = getCategoryInfo(t.category, t.type);
+                  return (
+                    <div key={t.id} className="py-3 flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-9 h-9 rounded-xl flex items-center justify-center text-white shrink-0 shadow-sm"
+                          style={{ backgroundColor: info.color }}
+                        >
+                          <span className="font-extrabold text-[10px] uppercase">
+                            {t.category.slice(0, 2)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-zinc-850 dark:text-zinc-100 leading-tight">
+                            {t.title}
+                          </p>
+                          <p className="text-[10px] font-semibold text-zinc-400 mt-0.5 uppercase tracking-wider">
+                            {info.label} • {new Date(t.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className={`font-black tracking-tight ${t.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-800 dark:text-zinc-200"}`}>
+                          {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount)}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-black tracking-tight ${t.type === "income" ? "text-emerald-600 dark:text-emerald-400" : "text-zinc-800 dark:text-zinc-200"}`}>
-                        {t.type === "income" ? "+" : "-"}{formatCurrency(t.amount)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="h-[180px] flex items-center justify-center text-zinc-400 text-xs font-medium">
-              No transactions logged yet
-            </div>
-          )}
-        </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="h-[180px] flex items-center justify-center text-zinc-400 text-xs font-medium">
+                No transactions logged yet
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
