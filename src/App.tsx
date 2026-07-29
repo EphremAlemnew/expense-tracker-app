@@ -7,6 +7,17 @@ import { Subscriptions } from "./components/Subscriptions";
 import { TransactionModal } from "./components/TransactionModal";
 import { TaxCalculator } from "./components/TaxCalculator";
 import { Login } from "./components/Login";
+import { Toast } from "./components/ui/toast";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "./components/ui/alert-dialog";
 import {
   DEFAULT_EXPENSE_CATEGORIES,
   DEFAULT_INCOME_CATEGORIES,
@@ -76,12 +87,40 @@ export default function App() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [isOnline, setIsOnline] = useState(false);
 
+  // Success Toast state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "error" } | null>(null);
+
+  // Custom Alert Dialog confirmation state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    actionText?: string;
+    onConfirm: () => void;
+  } | null>(null);
+
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem("fortuna_dark_mode");
     if (saved !== null) return saved === "true";
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   });
+
+  // Helper trigger to display toast
+  const showToast = (message: string, type: "success" | "info" | "error" = "success") => {
+    setToast({ message, type });
+  };
+
+  // Helper trigger to open Alert Dialog
+  const triggerConfirm = (title: string, description: string, onConfirm: () => void, actionText: string = "Proceed") => {
+    setConfirmDialog({
+      isOpen: true,
+      title,
+      description,
+      actionText,
+      onConfirm,
+    });
+  };
 
   // 3. Fetch Data from API on load with localStorage fallback
   useEffect(() => {
@@ -143,6 +182,7 @@ export default function App() {
   // 4. Handlers
   const handleSaveTransaction = async (transactionData: Omit<Transaction, "id"> & { id?: string }) => {
     let savedTx = { ...transactionData };
+    const isEdit = !!transactionData.id;
     if (!savedTx.id) {
       savedTx.id = Math.random().toString(36).substring(2, 9);
     }
@@ -167,6 +207,7 @@ export default function App() {
       }
     }
     setEditingTransaction(null);
+    showToast(isEdit ? "Transaction updated successfully!" : "Transaction added successfully!", "success");
   };
 
   const handleEditClick = (transaction: Transaction) => {
@@ -174,35 +215,47 @@ export default function App() {
     setIsModalOpen(true);
   };
 
-  const handleDeleteTransaction = async (id: string) => {
-    if (confirm("Are you sure you want to delete this transaction record?")) {
-      const updated = transactions.filter((t) => t.id !== id);
-      setTransactions(updated);
-      localStorage.setItem("fortuna_transactions", JSON.stringify(updated));
-      
-      if (isOnline) {
-        try {
-          await fetch(`${SERVER_URL}/transactions/${id}`, { method: "DELETE" });
-        } catch (err) {
-          console.error("Failed to delete transaction", err);
+  const handleDeleteTransaction = (id: string) => {
+    triggerConfirm(
+      "Delete Transaction Record",
+      "Are you sure you want to delete this transaction from your ledger? This action is irreversible.",
+      async () => {
+        const updated = transactions.filter((t) => t.id !== id);
+        setTransactions(updated);
+        localStorage.setItem("fortuna_transactions", JSON.stringify(updated));
+        
+        if (isOnline) {
+          try {
+            await fetch(`${SERVER_URL}/transactions/${id}`, { method: "DELETE" });
+          } catch (err) {
+            console.error("Failed to delete transaction", err);
+          }
         }
-      }
-    }
+        showToast("Transaction deleted successfully.", "success");
+      },
+      "Delete"
+    );
   };
 
-  const handleClearAllTransactions = async () => {
-    if (confirm("Are you sure you want to clear the entire ledger? This action is irreversible.")) {
-      setTransactions([]);
-      localStorage.setItem("fortuna_transactions", JSON.stringify([]));
-      
-      if (isOnline) {
-        try {
-          await fetch(`${SERVER_URL}/transactions`, { method: "DELETE" });
-        } catch (err) {
-          console.error("Failed to clear transactions", err);
+  const handleClearAllTransactions = () => {
+    triggerConfirm(
+      "Clear Transaction Ledger",
+      "Are you sure you want to delete all transaction entries? This will completely empty your audit logs.",
+      async () => {
+        setTransactions([]);
+        localStorage.setItem("fortuna_transactions", JSON.stringify([]));
+        
+        if (isOnline) {
+          try {
+            await fetch(`${SERVER_URL}/transactions`, { method: "DELETE" });
+          } catch (err) {
+            console.error("Failed to clear transactions", err);
+          }
         }
-      }
-    }
+        showToast("Ledger logs cleared successfully.", "success");
+      },
+      "Clear All"
+    );
   };
 
   const handleSaveBudget = async (budget: Budget) => {
@@ -224,22 +277,29 @@ export default function App() {
         console.error("Failed to sync budget", err);
       }
     }
+    showToast("Category budget limit saved successfully!", "success");
   };
 
-  const handleRemoveBudget = async (category: string) => {
-    if (confirm("Are you sure you want to delete the budget limit for this category?")) {
-      const updated = budgets.filter((b) => b.category !== category);
-      setBudgets(updated);
-      localStorage.setItem("fortuna_budgets", JSON.stringify(updated));
-      
-      if (isOnline) {
-        try {
-          await fetch(`${SERVER_URL}/budgets/${category}`, { method: "DELETE" });
-        } catch (err) {
-          console.error("Failed to delete budget", err);
+  const handleRemoveBudget = (category: string) => {
+    triggerConfirm(
+      "Remove Budget Limit",
+      `Are you sure you want to delete the spending limit allocated for category "${category}"?`,
+      async () => {
+        const updated = budgets.filter((b) => b.category !== category);
+        setBudgets(updated);
+        localStorage.setItem("fortuna_budgets", JSON.stringify(updated));
+        
+        if (isOnline) {
+          try {
+            await fetch(`${SERVER_URL}/budgets/${category}`, { method: "DELETE" });
+          } catch (err) {
+            console.error("Failed to delete budget", err);
+          }
         }
-      }
-    }
+        showToast("Category budget removed successfully.", "success");
+      },
+      "Remove Limit"
+    );
   };
 
   const handleSaveSubscription = async (sub: Subscription) => {
@@ -258,22 +318,29 @@ export default function App() {
         console.error("Failed to sync subscription", err);
       }
     }
+    showToast("Subscription bill added successfully!", "success");
   };
 
-  const handleRemoveSubscription = async (id: string) => {
-    if (confirm("Are you sure you want to delete this subscription track?")) {
-      const updated = subscriptions.filter((s) => s.id !== id);
-      setSubscriptions(updated);
-      localStorage.setItem("fortuna_subscriptions", JSON.stringify(updated));
-      
-      if (isOnline) {
-        try {
-          await fetch(`${SERVER_URL}/subscriptions/${id}`, { method: "DELETE" });
-        } catch (err) {
-          console.error("Failed to delete subscription", err);
+  const handleRemoveSubscription = (id: string) => {
+    triggerConfirm(
+      "Cancel Subscription Tracker",
+      "Are you sure you want to stop tracking this recurring bill?",
+      async () => {
+        const updated = subscriptions.filter((s) => s.id !== id);
+        setSubscriptions(updated);
+        localStorage.setItem("fortuna_subscriptions", JSON.stringify(updated));
+        
+        if (isOnline) {
+          try {
+            await fetch(`${SERVER_URL}/subscriptions/${id}`, { method: "DELETE" });
+          } catch (err) {
+            console.error("Failed to delete subscription", err);
+          }
         }
-      }
-    }
+        showToast("Subscription tracker removed.", "success");
+      },
+      "Stop Tracking"
+    );
   };
 
   const handleAddCategory = async (newCat: CategoryInfo) => {
@@ -292,6 +359,7 @@ export default function App() {
         console.error("Failed to sync category to server:", err);
       }
     }
+    showToast(`Category "${newCat.label}" created successfully!`, "success");
   };
 
   const handleQuickAddIncome = (title: string, amount: number, type: "income" | "expense", category: string, date: string) => {
@@ -307,14 +375,51 @@ export default function App() {
     setUser(username);
     localStorage.setItem("fortuna_user", username);
     setActiveTab("dashboard");
+    showToast("Welcome back! Signed in successfully.", "success");
   };
 
   const handleLogout = () => {
-    if (confirm("Are you sure you want to log out of Fortuna?")) {
-      setUser(null);
-      localStorage.removeItem("fortuna_user");
-      setActiveTab("tax");
-    }
+    triggerConfirm(
+      "Sign Out of Fortuna",
+      "Are you sure you want to end your session? This will lock expense tracker access.",
+      () => {
+        setUser(null);
+        localStorage.removeItem("fortuna_user");
+        setActiveTab("tax");
+        showToast("Signed out successfully.", "success");
+      },
+      "Sign Out"
+    );
+  };
+
+  // Database Wipe Reset Trigger
+  const handleResetDatabase = () => {
+    triggerConfirm(
+      "Reset App Database",
+      "DANGER: Are you sure you want to wipe all transaction entries, budgets, dynamic categories, and tax logs? This will restore original configurations.",
+      async () => {
+        setTransactions([]);
+        setBudgets([]);
+        setSubscriptions([]);
+        setCategories([...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
+        
+        localStorage.removeItem("fortuna_transactions");
+        localStorage.removeItem("fortuna_budgets");
+        localStorage.removeItem("fortuna_subscriptions");
+        localStorage.removeItem("fortuna_categories");
+        localStorage.removeItem("fortuna_tax_history");
+        
+        if (isOnline) {
+          try {
+            await fetch(`${SERVER_URL}/reset`, { method: "DELETE" });
+          } catch (err) {
+            console.error("Failed to wipe database on server:", err);
+          }
+        }
+        showToast("All databases wiped successfully.", "success");
+      },
+      "Wipe Everything"
+    );
   };
 
   return (
@@ -330,6 +435,7 @@ export default function App() {
         onLogout={handleLogout}
         currency={currency}
         setCurrency={setCurrency}
+        onResetData={handleResetDatabase}
       />
 
       {/* Main Panel Viewport */}
@@ -343,6 +449,8 @@ export default function App() {
             isOnline={isOnline}
             isLoggedIn={!!user}
             currency={currency}
+            showToast={showToast}
+            onConfirmDialog={triggerConfirm}
           />
         )}
 
@@ -416,6 +524,38 @@ export default function App() {
         editingTransaction={editingTransaction}
         categories={categories}
       />
+
+      {/* Self-dismissing Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {/* Central Confirmation Alert Dialog */}
+      {confirmDialog && (
+        <AlertDialog open={confirmDialog.isOpen} onOpenChange={(open) => { if (!open) setConfirmDialog(null); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{confirmDialog.title}</AlertDialogTitle>
+              <AlertDialogDescription>{confirmDialog.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setConfirmDialog(null)}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  confirmDialog.onConfirm();
+                  setConfirmDialog(null);
+                }}
+              >
+                {confirmDialog.actionText || "Proceed"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

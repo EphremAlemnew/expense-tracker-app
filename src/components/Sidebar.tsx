@@ -14,6 +14,7 @@ interface SidebarProps {
   onLogout: () => void;
   currency: "USD" | "ETB";
   setCurrency: (val: "USD" | "ETB") => void;
+  onResetData: () => void;
 }
 
 export function Sidebar({
@@ -26,6 +27,7 @@ export function Sidebar({
   onLogout,
   currency,
   setCurrency,
+  onResetData,
 }: SidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -193,6 +195,14 @@ export function Sidebar({
               </p>
             </div>
           )}
+
+          {/* Reset App Trigger */}
+          <button
+            onClick={onResetData}
+            className="w-full text-center py-2.5 text-[9px] font-black tracking-wider text-red-500 hover:text-white hover:bg-red-650 rounded-xl border border-red-500/10 hover:border-transparent transition-all duration-200 uppercase cursor-pointer"
+          >
+            Reset Database
+          </button>
         </div>
       </aside>
 

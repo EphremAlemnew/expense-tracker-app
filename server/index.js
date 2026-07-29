@@ -210,6 +210,31 @@ app.delete("/api/tax-calculations/:id", async (req, res) => {
   res.status(200).json({ success: true });
 });
 
+// 6. Reset Database
+app.delete("/api/reset", async (req, res) => {
+  const defaultDB = {
+    transactions: [],
+    budgets: [],
+    subscriptions: [],
+    categories: [
+      { id: "food", label: "Food & Dining", color: "#f87171", type: "expense" },
+      { id: "utilities", label: "Bills & Utilities", color: "#60a5fa", type: "expense" },
+      { id: "entertainment", label: "Entertainment", color: "#c084fc", type: "expense" },
+      { id: "transport", label: "Transportation", color: "#facc15", type: "expense" },
+      { id: "shopping", label: "Shopping", color: "#f472b6", type: "expense" },
+      { id: "health", label: "Health & Fitness", color: "#34d399", type: "expense" },
+      { id: "other", label: "Other Expenses", color: "#94a3b8", type: "expense" },
+      { id: "salary", label: "Salary", color: "#10b981", type: "income" },
+      { id: "freelance", label: "Freelance Work", color: "#3b82f6", type: "income" },
+      { id: "investments", label: "Investments", color: "#f59e0b", type: "income" },
+      { id: "other_income", label: "Other Income", color: "#6b7280", type: "income" }
+    ],
+    taxCalculations: []
+  };
+  await writeDB(defaultDB);
+  res.status(200).json({ success: true });
+});
+
 // Start Server
 app.listen(PORT, () => {
   console.log(`Fortuna Server running at http://localhost:${PORT}`);
