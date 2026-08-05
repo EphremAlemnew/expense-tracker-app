@@ -9,7 +9,9 @@ async function sha256(message: string): Promise<string> {
   const msgBuffer = new TextEncoder().encode(message);
   const hashBuffer = await window.crypto.subtle.digest("SHA-256", msgBuffer);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hashHex = hashArray
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
   return hashHex;
 }
 
@@ -36,13 +38,18 @@ export function Login({ onLoginSuccess }: LoginProps) {
 
     try {
       const expectedUsername = import.meta.env.VITE_AUTH_USERNAME || "ephrem";
-      const expectedPasswordHash = import.meta.env.VITE_AUTH_PASSWORD_HASH || "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f";
+      const expectedPasswordHash =
+        import.meta.env.VITE_AUTH_PASSWORD_HASH ||
+        "ef92b778bafe771e89245b89ecbc08a44a4e166c06659911881f383d4473e94f";
       const enteredHash = await sha256(password.trim());
 
       // Brief delay to simulate validation and preserve the premium button spinner UX
       setTimeout(() => {
         setLoading(false);
-        if (username.trim() === expectedUsername && enteredHash === expectedPasswordHash) {
+        if (
+          username.trim() === expectedUsername &&
+          enteredHash === expectedPasswordHash
+        ) {
           onLoginSuccess(expectedUsername);
         } else {
           setError("Invalid username or password");
@@ -123,12 +130,6 @@ export function Login({ onLoginSuccess }: LoginProps) {
             >
               {loading ? "Authenticating..." : "Sign In"}
             </Button>
-
-            {/* Default credentials helper */}
-            <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-850 bg-zinc-55/30 dark:bg-zinc-900/20 text-[10px] text-zinc-400 dark:text-zinc-550 font-semibold space-y-0.5 leading-relaxed">
-              <p className="uppercase text-zinc-500 tracking-wider">Demo Credentials:</p>
-              <p>Username: <code className="text-zinc-700 dark:text-zinc-300">{import.meta.env.VITE_AUTH_USERNAME || "ephrem"}</code></p>
-            </div>
           </form>
         </CardContent>
       </Card>
