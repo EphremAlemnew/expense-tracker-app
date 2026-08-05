@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { LayoutDashboard, Receipt, Target, CalendarDays, Wallet, Menu, X, Calculator, LogIn, LogOut } from "lucide-react";
+import { LayoutDashboard, Receipt, Target, CalendarDays, Wallet, Menu, X, LogIn, LogOut } from "lucide-react";
 import { ThemeToggle } from "./ThemeToggle";
 
-export type TabType = "dashboard" | "transactions" | "budgets" | "subscriptions" | "tax" | "login";
+export type TabType = "dashboard" | "transactions" | "budgets" | "subscriptions" | "login";
 
 interface SidebarProps {
   activeTab: TabType;
@@ -36,10 +36,8 @@ export function Sidebar({
         { id: "transactions" as TabType, label: "Transactions", icon: Receipt },
         { id: "budgets" as TabType, label: "Budgets", icon: Target },
         { id: "subscriptions" as TabType, label: "Subscriptions", icon: CalendarDays },
-        { id: "tax" as TabType, label: "Tax Calculator", icon: Calculator },
       ]
     : [
-        { id: "tax" as TabType, label: "Tax Calculator", icon: Calculator },
         { id: "login" as TabType, label: "Sign In", icon: LogIn },
       ];
 

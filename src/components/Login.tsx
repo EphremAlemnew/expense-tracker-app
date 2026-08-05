@@ -29,7 +29,8 @@ export function Login({ onLoginSuccess }: LoginProps) {
     // Brief delay to simulate validation and preserve the premium button spinner UX
     setTimeout(() => {
       setLoading(false);
-      if (username.trim() === "ephrem" && password.trim() === "password123") {
+      const expectedPassword = import.meta.env.VITE_AUTH_PASSWORD || "password123";
+      if (username.trim() === "ephrem" && password.trim() === expectedPassword) {
         onLoginSuccess("ephrem");
       } else {
         setError("Invalid username or password");
@@ -110,7 +111,6 @@ export function Login({ onLoginSuccess }: LoginProps) {
             <div className="p-3.5 rounded-xl border border-zinc-200 dark:border-zinc-850 bg-zinc-55/30 dark:bg-zinc-900/20 text-[10px] text-zinc-400 dark:text-zinc-550 font-semibold space-y-0.5 leading-relaxed">
               <p className="uppercase text-zinc-500 tracking-wider">Demo Credentials:</p>
               <p>Username: <code className="text-zinc-700 dark:text-zinc-300">ephrem</code></p>
-              <p>Password: <code className="text-zinc-700 dark:text-zinc-300">password123</code></p>
             </div>
           </form>
         </CardContent>

@@ -5,7 +5,6 @@ import { TransactionsList } from "./components/TransactionsList";
 import { BudgetsManager } from "./components/BudgetsManager";
 import { Subscriptions } from "./components/Subscriptions";
 import { TransactionModal } from "./components/TransactionModal";
-import { TaxCalculator } from "./components/TaxCalculator";
 import { Login } from "./components/Login";
 import { Toast } from "./components/ui/toast";
 import {
@@ -36,7 +35,7 @@ export default function App() {
   // Default tab selection shifts dynamically if unauthenticated
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     const savedUser = localStorage.getItem("fortuna_user");
-    return savedUser ? "dashboard" : "tax";
+    return savedUser ? "dashboard" : "login";
   });
 
   // 2. Core Ledger & Analytics States (Initialized from LocalStorage with no mock data fallback)
@@ -117,8 +116,8 @@ export default function App() {
         setCategories(e.newValue ? JSON.parse(e.newValue) : [...DEFAULT_EXPENSE_CATEGORIES, ...DEFAULT_INCOME_CATEGORIES]);
       } else if (e.key === "fortuna_user") {
         setUser(e.newValue);
-        if (!e.newValue && activeTab !== "tax") {
-          setActiveTab("tax");
+        if (!e.newValue && activeTab !== "login") {
+          setActiveTab("login");
         } else if (e.newValue && activeTab === "login") {
           setActiveTab("dashboard");
         }
@@ -254,10 +253,6 @@ export default function App() {
     showToast(`Category "${newCat.label}" created successfully!`, "success");
   };
 
-  const handleQuickAddIncome = (title: string, amount: number, type: "income" | "expense", category: string, date: string) => {
-    handleSaveTransaction({ title, amount, type, category, date });
-  };
-
   const handleTabNavigation = (tab: "transactions" | "budgets") => {
     setActiveTab(tab);
   };
@@ -277,7 +272,7 @@ export default function App() {
       () => {
         setUser(null);
         localStorage.removeItem("fortuna_user");
-        setActiveTab("tax");
+        setActiveTab("login");
         showToast("Signed out successfully.", "success");
       },
       "Sign Out"
@@ -324,18 +319,6 @@ export default function App() {
 
       {/* Main Panel Viewport */}
       <main className="flex-1 p-6 md:p-10 pt-24 lg:pt-10 max-w-[1200px] mx-auto w-full">
-        {/* Public viewable Tab */}
-        {activeTab === "tax" && (
-          <TaxCalculator
-            onAddTransaction={handleQuickAddIncome}
-            isDarkMode={isDarkMode}
-            isLoggedIn={!!user}
-            currency={currency}
-            showToast={showToast}
-            onConfirmDialog={triggerConfirm}
-          />
-        )}
-
         {/* Public Login Tab */}
         {activeTab === "login" && !user && (
           <Login
