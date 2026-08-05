@@ -26,8 +26,6 @@ interface TaxRecord {
 interface TaxCalculatorProps {
   onAddTransaction: (title: string, amount: number, type: "income" | "expense", category: string, date: string) => void;
   isDarkMode: boolean;
-  serverUrl: string;
-  isOnline: boolean;
   isLoggedIn: boolean;
   currency: "USD" | "ETB";
   showToast: (message: string, type?: "success" | "info" | "error") => void;
@@ -39,8 +37,6 @@ const ETB_TO_USD_RATE = 120; // 1 USD = 120 ETB standard exchange rate for calcu
 export function TaxCalculator({
   onAddTransaction,
   isDarkMode,
-  serverUrl,
-  isOnline,
   isLoggedIn,
   currency,
   showToast,
@@ -58,30 +54,35 @@ export function TaxCalculator({
   const [history, setHistory] = useState<TaxRecord[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Fetch History from API or LocalStorage
-  const fetchTaxHistory = useCallback(async () => {
+  // Fetch History from LocalStorage
+  const fetchTaxHistory = useCallback(() => {
     setLoadingHistory(true);
     try {
-      if (isOnline) {
-        const response = await fetch(`${serverUrl}/tax-calculations`);
-        const data = await response.json();
-        setHistory(data);
-      } else {
-        const saved = localStorage.getItem("fortuna_tax_history");
-        setHistory(saved ? JSON.parse(saved) : []);
-      }
-    } catch (err) {
-      console.error("Failed to load tax history:", err);
       const saved = localStorage.getItem("fortuna_tax_history");
       setHistory(saved ? JSON.parse(saved) : []);
+    } catch (err) {
+      console.error("Failed to load tax history:", err);
     } finally {
       setLoadingHistory(false);
     }
-  }, [isOnline, serverUrl]);
+  }, []);
 
   useEffect(() => {
     fetchTaxHistory();
   }, [fetchTaxHistory]);
+
+  // Real-time synchronization across browser tabs/windows
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "fortuna_tax_history") {
+        setHistory(e.newValue ? JSON.parse(e.newValue) : []);
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
 
   // Sync to local storage for offline redundancy
   const saveHistoryLocally = (newHistory: TaxRecord[]) => {
@@ -197,8 +198,9 @@ export function TaxCalculator({
   }, [results, isDarkMode]);
 
   // Actions
-  const handleSaveCalculation = async () => {
-    const newRecord: Omit<TaxRecord, "id"> = {
+  const handleSaveCalculation = () => {
+    const newRecord: TaxRecord = {
+      id: Math.random().toString(36).substring(2, 9),
       date: new Date().toISOString().slice(0, 10),
       title: title.trim() || "Salary Calculation",
       basicSalary: parseFloat(basicSalary) || 0,
@@ -213,32 +215,10 @@ export function TaxCalculator({
       netPay: results.netPay,
     };
 
-    try {
-      if (isOnline) {
-        const response = await fetch(`${serverUrl}/tax-calculations`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newRecord),
-        });
-        const savedRecord = await response.json();
-        const updated = [savedRecord, ...history];
-        setHistory(updated);
-        saveHistoryLocally(updated);
-      } else {
-        const localRecord = { ...newRecord, id: Math.random().toString(36).substring(2, 9) };
-        const updated = [localRecord, ...history];
-        setHistory(updated);
-        saveHistoryLocally(updated);
-      }
-      showToast("Tax calculation log saved successfully!", "success");
-    } catch (err) {
-      console.error("Failed to save tax record:", err);
-      const localRecord = { ...newRecord, id: Math.random().toString(36).substring(2, 9) };
-      const updated = [localRecord, ...history];
-      setHistory(updated);
-      saveHistoryLocally(updated);
-      showToast("Saved locally (offline mode)", "success");
-    }
+    const updated = [newRecord, ...history];
+    setHistory(updated);
+    saveHistoryLocally(updated);
+    showToast("Tax calculation log saved successfully!", "success");
   };
 
   const handleLogAsIncome = () => {
@@ -271,22 +251,11 @@ export function TaxCalculator({
     onConfirmDialog(
       "Delete Tax Record",
       "Are you sure you want to delete this saved tax calculation log?",
-      async () => {
-        try {
-          if (isOnline) {
-            await fetch(`${serverUrl}/tax-calculations/${id}`, { method: "DELETE" });
-          }
-          const updated = history.filter((h) => h.id !== id);
-          setHistory(updated);
-          saveHistoryLocally(updated);
-          showToast("Tax record deleted successfully.", "success");
-        } catch (err) {
-          console.error("Failed to delete record:", err);
-          const updated = history.filter((h) => h.id !== id);
-          setHistory(updated);
-          saveHistoryLocally(updated);
-          showToast("Deleted locally (offline).", "success");
-        }
+      () => {
+        const updated = history.filter((h) => h.id !== id);
+        setHistory(updated);
+        saveHistoryLocally(updated);
+        showToast("Tax record deleted successfully.", "success");
       },
       "Delete"
     );

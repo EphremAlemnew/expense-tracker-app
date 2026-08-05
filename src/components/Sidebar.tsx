@@ -9,7 +9,6 @@ interface SidebarProps {
   setActiveTab: (tab: TabType) => void;
   isDarkMode: boolean;
   setIsDarkMode: (val: boolean) => void;
-  isOnline: boolean;
   user: string | null;
   onLogout: () => void;
   currency: "USD" | "ETB";
@@ -22,7 +21,6 @@ export function Sidebar({
   setActiveTab,
   isDarkMode,
   setIsDarkMode,
-  isOnline,
   user,
   onLogout,
   currency,
@@ -64,13 +62,9 @@ export function Sidebar({
         </div>
         
         <div className="flex items-center gap-3">
-          <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-            isOnline 
-              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
-              : "bg-amber-500/10 text-amber-550 border-amber-500/20"
-          }`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`} />
-            {isOnline ? "Syncing" : "Offline"}
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Local DB
           </span>
           
           <button
@@ -132,13 +126,9 @@ export function Sidebar({
           {/* Connection Status */}
           <div className="flex items-center justify-between px-2 text-xs font-semibold text-zinc-400">
             <span>Status</span>
-            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border ${
-              isOnline 
-                ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
-                : "bg-amber-500/10 text-amber-550 border-amber-500/20"
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${isOnline ? "bg-emerald-500" : "bg-amber-500"}`} />
-              {isOnline ? "Connected" : "Offline"}
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              Ready
             </span>
           </div>
 

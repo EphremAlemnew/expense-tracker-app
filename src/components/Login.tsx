@@ -7,17 +7,15 @@ import { Card, CardHeader, CardTitle, CardContent } from "./ui/card";
 
 interface LoginProps {
   onLoginSuccess: (username: string) => void;
-  serverUrl: string;
-  isOnline: boolean;
 }
 
-export function Login({ onLoginSuccess, serverUrl, isOnline }: LoginProps) {
+export function Login({ onLoginSuccess }: LoginProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -28,39 +26,15 @@ export function Login({ onLoginSuccess, serverUrl, isOnline }: LoginProps) {
 
     setLoading(true);
 
-    try {
-      if (isOnline) {
-        const response = await fetch(`${serverUrl}/login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username: username.trim(), password: password.trim() }),
-        });
-        
-        const data = await response.json();
-        if (response.ok && data.success) {
-          onLoginSuccess(data.username);
-        } else {
-          setError(data.message || "Invalid username or password");
-        }
-      } else {
-        // Offline Fallback
-        if (username.trim() === "ephrem" && password.trim() === "password123") {
-          onLoginSuccess("ephrem");
-        } else {
-          setError("Invalid username or password (offline mode)");
-        }
-      }
-    } catch (err) {
-      console.error("Login request failed:", err);
-      // Catch error & check offline fallback credentials
+    // Brief delay to simulate validation and preserve the premium button spinner UX
+    setTimeout(() => {
+      setLoading(false);
       if (username.trim() === "ephrem" && password.trim() === "password123") {
         onLoginSuccess("ephrem");
       } else {
-        setError("Network error. Local verification failed.");
+        setError("Invalid username or password");
       }
-    } finally {
-      setLoading(false);
-    }
+    }, 400);
   };
 
   return (
