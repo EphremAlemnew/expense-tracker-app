@@ -7,6 +7,8 @@ const AlertDialog = DialogPrimitive.Root;
 const AlertDialogTrigger = DialogPrimitive.Trigger;
 const AlertDialogPortal = DialogPrimitive.Portal;
 
+const AlertDialogTitleContext = React.createContext<string | undefined>(undefined);
+
 const AlertDialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -25,19 +27,26 @@ AlertDialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, ...props }, ref) => (
-  <AlertDialogPortal>
-    <AlertDialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 rounded-3xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 p-6 shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-1/2 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-1/2",
-        className
-      )}
-      {...props}
-    />
-  </AlertDialogPortal>
-));
+>(({ className, ...props }, ref) => {
+  const titleId = React.useId();
+  return (
+    <AlertDialogPortal>
+      <AlertDialogOverlay />
+      <AlertDialogTitleContext.Provider value={titleId}>
+        <DialogPrimitive.Content
+          ref={ref}
+          aria-labelledby={titleId}
+          aria-describedby={undefined}
+          className={cn(
+            "fixed left-[50%] top-[50%] z-50 grid w-full max-w-md translate-x-[-50%] translate-y-[-50%] gap-4 rounded-3xl border border-zinc-200/50 dark:border-zinc-800/50 bg-white dark:bg-zinc-950 p-6 shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-1/2 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-1/2",
+            className
+          )}
+          {...props}
+        />
+      </AlertDialogTitleContext.Provider>
+    </AlertDialogPortal>
+  );
+});
 AlertDialogContent.displayName = DialogPrimitive.Content.displayName;
 
 const AlertDialogHeader = ({
@@ -71,13 +80,17 @@ AlertDialogFooter.displayName = "AlertDialogFooter";
 const AlertDialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
->(({ className, ...props }, ref) => (
-  <DialogPrimitive.Title
-    ref={ref}
-    className={cn("text-lg font-bold text-zinc-900 dark:text-zinc-50", className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const titleId = React.useContext(AlertDialogTitleContext);
+  return (
+    <DialogPrimitive.Title
+      ref={ref}
+      id={titleId}
+      className={cn("text-lg font-bold text-zinc-900 dark:text-zinc-50", className)}
+      {...props}
+    />
+  );
+});
 AlertDialogTitle.displayName = DialogPrimitive.Title.displayName;
 
 const AlertDialogDescription = React.forwardRef<
