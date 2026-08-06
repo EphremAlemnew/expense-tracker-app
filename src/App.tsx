@@ -150,12 +150,69 @@ export default function App() {
     localStorage.setItem("fortuna_currency", currency);
   }, [currency]);
 
+  // Load data from API on mount/auth change
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchData = async () => {
+      try {
+        const [txsRes, budgetsRes, subsRes, catsRes] = await Promise.all([
+          fetch("/api/transactions"),
+          fetch("/api/budgets"),
+          fetch("/api/subscriptions"),
+          fetch("/api/categories")
+        ]);
+
+        if (txsRes.ok) {
+          const txsData = await txsRes.json();
+          setTransactions(txsData);
+          localStorage.setItem("fortuna_transactions", JSON.stringify(txsData));
+        }
+        if (budgetsRes.ok) {
+          const budgetsData = await budgetsRes.json();
+          setBudgets(budgetsData);
+          localStorage.setItem("fortuna_budgets", JSON.stringify(budgetsData));
+        }
+        if (subsRes.ok) {
+          const subsData = await subsRes.json();
+          setSubscriptions(subsData);
+          localStorage.setItem("fortuna_subscriptions", JSON.stringify(subsData));
+        }
+        if (catsRes.ok) {
+          const catsData = await catsRes.json();
+          if (catsData.length > 0) {
+            setCategories(catsData);
+            localStorage.setItem("fortuna_categories", JSON.stringify(catsData));
+          }
+        }
+      } catch (err) {
+        console.warn("Could not sync with API database, using local storage cache:", err);
+      }
+    };
+
+    fetchData();
+  }, [user]);
+
   // 4. Handlers
-  const handleSaveTransaction = (transactionData: Omit<Transaction, "id"> & { id?: string }) => {
+  const handleSaveTransaction = async (transactionData: Omit<Transaction, "id"> & { id?: string }) => {
     let savedTx = { ...transactionData };
     const isEdit = !!transactionData.id;
-    if (!savedTx.id) {
-      savedTx.id = Math.random().toString(36).substring(2, 9);
+    
+    try {
+      const res = await fetch("/api/transactions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(savedTx),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        savedTx = data;
+      }
+    } catch (err) {
+      console.warn("API write failed, saving locally:", err);
+      if (!savedTx.id) {
+        savedTx.id = Math.random().toString(36).substring(2, 9);
+      }
     }
     
     const updatedTransactions = transactionData.id
@@ -178,7 +235,12 @@ export default function App() {
     triggerConfirm(
       "Delete Transaction Record",
       "Are you sure you want to delete this transaction from your ledger? This action is irreversible.",
-      () => {
+      async () => {
+        try {
+          await fetch(`/api/transactions/${id}`, { method: "DELETE" });
+        } catch (err) {
+          console.warn("API delete failed, removing locally:", err);
+        }
         const updated = transactions.filter((t) => t.id !== id);
         setTransactions(updated);
         localStorage.setItem("fortuna_transactions", JSON.stringify(updated));
@@ -192,7 +254,12 @@ export default function App() {
     triggerConfirm(
       "Clear Transaction Ledger",
       "Are you sure you want to delete all transaction entries? This will completely empty your audit logs.",
-      () => {
+      async () => {
+        try {
+          await fetch("/api/transactions", { method: "DELETE" });
+        } catch (err) {
+          console.warn("API clear failed, removing locally:", err);
+        }
         setTransactions([]);
         localStorage.setItem("fortuna_transactions", JSON.stringify([]));
         showToast("Ledger logs cleared successfully.", "success");
@@ -201,7 +268,16 @@ export default function App() {
     );
   };
 
-  const handleSaveBudget = (budget: Budget) => {
+  const handleSaveBudget = async (budget: Budget) => {
+    try {
+      await fetch("/api/budgets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(budget),
+      });
+    } catch (err) {
+      console.warn("API save budget failed:", err);
+    }
     const updated = budgets.some((b) => b.category === budget.category)
       ? budgets.map((b) => (b.category === budget.category ? budget : b))
       : [...budgets, budget];
@@ -215,7 +291,12 @@ export default function App() {
     triggerConfirm(
       "Remove Budget Limit",
       `Are you sure you want to delete the spending limit allocated for category "${category}"?`,
-      () => {
+      async () => {
+        try {
+          await fetch(`/api/budgets/${encodeURIComponent(category)}`, { method: "DELETE" });
+        } catch (err) {
+          console.warn("API delete budget failed:", err);
+        }
         const updated = budgets.filter((b) => b.category !== category);
         setBudgets(updated);
         localStorage.setItem("fortuna_budgets", JSON.stringify(updated));
@@ -225,8 +306,24 @@ export default function App() {
     );
   };
 
-  const handleSaveSubscription = (sub: Subscription) => {
-    const updated = [...subscriptions, sub];
+  const handleSaveSubscription = async (sub: Subscription) => {
+    let savedSub = { ...sub };
+    try {
+      const res = await fetch("/api/subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(sub),
+      });
+      if (res.ok) {
+        savedSub = await res.json();
+      }
+    } catch (err) {
+      console.warn("API save subscription failed:", err);
+      if (!savedSub.id) {
+        savedSub.id = Math.random().toString(36).substring(2, 9);
+      }
+    }
+    const updated = [...subscriptions, savedSub];
     setSubscriptions(updated);
     localStorage.setItem("fortuna_subscriptions", JSON.stringify(updated));
     showToast("Subscription bill added successfully!", "success");
@@ -236,7 +333,12 @@ export default function App() {
     triggerConfirm(
       "Cancel Subscription Tracker",
       "Are you sure you want to stop tracking this recurring bill?",
-      () => {
+      async () => {
+        try {
+          await fetch(`/api/subscriptions/${id}`, { method: "DELETE" });
+        } catch (err) {
+          console.warn("API delete subscription failed:", err);
+        }
         const updated = subscriptions.filter((s) => s.id !== id);
         setSubscriptions(updated);
         localStorage.setItem("fortuna_subscriptions", JSON.stringify(updated));
@@ -246,11 +348,24 @@ export default function App() {
     );
   };
 
-  const handleAddCategory = (newCat: CategoryInfo) => {
-    const updated = [...categories, newCat];
+  const handleAddCategory = async (newCat: CategoryInfo) => {
+    let savedCat = { ...newCat };
+    try {
+      const res = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newCat),
+      });
+      if (res.ok) {
+        savedCat = await res.json();
+      }
+    } catch (err) {
+      console.warn("API save category failed:", err);
+    }
+    const updated = [...categories, savedCat];
     setCategories(updated);
     localStorage.setItem("fortuna_categories", JSON.stringify(updated));
-    showToast(`Category "${newCat.label}" created successfully!`, "success");
+    showToast(`Category "${savedCat.label}" created successfully!`, "success");
   };
 
   const handleTabNavigation = (tab: "transactions" | "budgets") => {
@@ -284,7 +399,12 @@ export default function App() {
     triggerConfirm(
       "Reset App Database",
       "DANGER: Are you sure you want to wipe all transaction entries, budgets, dynamic categories, and tax logs? This will restore original configurations.",
-      () => {
+      async () => {
+        try {
+          await fetch("/api/reset", { method: "DELETE" });
+        } catch (err) {
+          console.warn("API reset failed:", err);
+        }
         setTransactions([]);
         setBudgets([]);
         setSubscriptions([]);
@@ -305,20 +425,22 @@ export default function App() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-[#070709] text-zinc-950 dark:text-zinc-50 flex flex-col lg:flex-row transition-colors duration-300">
       {/* Navigation panel */}
-      <Sidebar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
-        user={user}
-        onLogout={handleLogout}
-        currency={currency}
-        setCurrency={setCurrency}
-        onResetData={handleResetDatabase}
-      />
+      {user && (
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          isDarkMode={isDarkMode}
+          setIsDarkMode={setIsDarkMode}
+          user={user}
+          onLogout={handleLogout}
+          currency={currency}
+          setCurrency={setCurrency}
+          onResetData={handleResetDatabase}
+        />
+      )}
 
       {/* Main Panel Viewport */}
-      <main className="flex-1 p-6 md:p-10 pt-24 lg:pt-10 max-w-[1200px] mx-auto w-full">
+      <main className={`flex-1 p-6 md:p-10 max-w-[1200px] mx-auto w-full ${user ? "pt-24 lg:pt-10" : "pt-10"}`}>
         {/* Public Login Tab */}
         {activeTab === "login" && !user && (
           <Login

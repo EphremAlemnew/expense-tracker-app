@@ -1,19 +1,27 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { db, initDB } from "./db.js";
+import { db, initDB } from "../server/db.js";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
 
-// Initialize SQLite database tables on startup
-initDB().catch((err) => {
-  console.error("Database initialization failed:", err);
+// Initialize SQLite database tables on first request
+let isDBInit = false;
+app.use(async (req, res, next) => {
+  if (!isDBInit) {
+    try {
+      await initDB();
+      isDBInit = true;
+    } catch (err) {
+      console.error("Database initialization failed in serverless function:", err);
+    }
+  }
+  next();
 });
 
 // --- API Endpoints ---
@@ -291,7 +299,4 @@ app.delete("/api/reset", async (req, res) => {
   }
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`Fortuna Server running at http://localhost:${PORT}`);
-});
+export default app;
