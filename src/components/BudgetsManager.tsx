@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Target, Trash2, Plus, ShieldAlert, AlertCircle, Tag } from "lucide-react";
+import { useState, useMemo, useEffect } from "react";
+import { Target, Trash2, Plus, ShieldAlert, AlertCircle, Tag, Pencil, X, Save } from "lucide-react";
 import { formatCurrency, getCategoryInfo } from "../utils/financeUtils";
 import type { Budget, Transaction, CategoryInfo } from "../utils/financeUtils";
 import { Card, CardContent } from "./ui/card";
@@ -42,6 +42,7 @@ export function BudgetsManager({
   const [budgetCategory, setBudgetCategory] = useState("");
   const [budgetLimit, setBudgetLimit] = useState("");
   const [budgetError, setBudgetError] = useState("");
+  const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
 
   // Category Form
   const [newCatLabel, setNewCatLabel] = useState("");
@@ -81,15 +82,30 @@ export function BudgetsManager({
   const availableCategories = useMemo(() => {
     const configured = new Set(budgets.map((b) => b.category));
     const expenseCats = categories.filter((c) => c.type === "expense");
-    return expenseCats.filter((cat) => !configured.has(cat.id));
-  }, [budgets, categories]);
+    return expenseCats.filter(
+      (cat) => !configured.has(cat.id) || (editingBudget && cat.id === editingBudget.category)
+    );
+  }, [budgets, categories, editingBudget]);
 
   // Update default category when budget list changes
-  useMemo(() => {
+  useEffect(() => {
     if (availableCategories.length > 0 && !availableCategories.some((c) => c.id === budgetCategory)) {
       setBudgetCategory(availableCategories[0].id);
     }
   }, [availableCategories, budgetCategory]);
+
+  const handleEditClick = (budget: Budget) => {
+    setEditingBudget(budget);
+    setBudgetCategory(budget.category);
+    setBudgetLimit(String(budget.limit));
+    setBudgetError("");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingBudget(null);
+    setBudgetLimit("");
+    setBudgetError("");
+  };
 
   const handleBudgetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,6 +126,7 @@ export function BudgetsManager({
     });
 
     setBudgetLimit("");
+    setEditingBudget(null);
   };
 
   const handleCategorySubmit = (e: React.FormEvent) => {
@@ -160,10 +177,10 @@ export function BudgetsManager({
           <Card>
             <CardContent className="p-6 space-y-4">
               <h3 className="text-sm font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
-                <Target className="h-4 w-4 text-violet-500" /> Allocate Budget
+                <Target className="h-4 w-4 text-violet-500" /> {editingBudget ? "Edit Budget Limit" : "Allocate Budget"}
               </h3>
               
-              {availableCategories.length > 0 ? (
+              {availableCategories.length > 0 || editingBudget ? (
                 <form onSubmit={handleBudgetSubmit} className="space-y-4">
                   {/* Category */}
                   <div className="space-y-1.5">
@@ -172,7 +189,8 @@ export function BudgetsManager({
                       id="b-cat"
                       value={budgetCategory}
                       onChange={(e) => setBudgetCategory(e.target.value)}
-                      className="w-full h-11 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500/30 cursor-pointer appearance-none"
+                      disabled={!!editingBudget}
+                      className="w-full h-11 px-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs font-semibold text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-violet-500/30 cursor-pointer appearance-none disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {availableCategories.map((c) => (
                         <option key={c.id} value={c.id}>
@@ -196,9 +214,24 @@ export function BudgetsManager({
 
                   {budgetError && <p className="text-xs text-red-500 font-semibold">{budgetError}</p>}
 
-                  <Button type="submit" className="w-full">
-                    <Plus className="h-4 w-4 mr-1" /> Create Budget
-                  </Button>
+                  <div className="flex gap-2">
+                    {editingBudget && (
+                      <Button type="button" variant="outline" onClick={handleCancelEdit} className="w-1/2">
+                        <X className="h-4 w-4 mr-1" /> Cancel
+                      </Button>
+                    )}
+                    <Button type="submit" className={editingBudget ? "w-1/2" : "w-full"}>
+                      {editingBudget ? (
+                        <>
+                          <Save className="h-4 w-4 mr-1" /> Save
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-1" /> Create Budget
+                        </>
+                      )}
+                    </Button>
+                  </div>
                 </form>
               ) : (
                 <div className="p-4 text-center border border-dashed border-zinc-200 dark:border-zinc-850 rounded-2xl text-zinc-400 text-xs font-medium">
@@ -285,16 +318,19 @@ export function BudgetsManager({
                   {budgetList.map((b) => {
                     const isExceeded = b.percent >= 100;
                     const isWarning = b.percent >= 80 && b.percent < 100;
+                    const isEditing = editingBudget?.category === b.category;
                     
                     return (
                       <div 
                         key={b.category} 
                         className={`p-4 rounded-2xl border transition-all duration-300 flex flex-col justify-between min-h-[140px] ${
-                          isExceeded 
-                            ? "bg-red-500/5 border-red-500/30" 
-                            : isWarning 
-                              ? "bg-amber-500/5 border-amber-500/30" 
-                              : "bg-zinc-50/50 dark:bg-zinc-900/10 border-zinc-200 dark:border-zinc-800"
+                          isEditing
+                            ? "border-violet-500 bg-violet-550/5 dark:bg-violet-550/10"
+                            : isExceeded 
+                              ? "bg-red-500/5 border-red-500/30" 
+                              : isWarning 
+                                ? "bg-amber-500/5 border-amber-500/30" 
+                                : "bg-zinc-50/50 dark:bg-zinc-900/10 border-zinc-200 dark:border-zinc-800"
                         }`}
                       >
                         <div className="flex justify-between items-start">
@@ -308,15 +344,31 @@ export function BudgetsManager({
                             </span>
                           </div>
                           
-                          <Button
-                            onClick={() => onRemoveBudget(b.category)}
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 rounded-lg hover:text-red-550 hover:bg-red-500/10"
-                            title="Delete budget limit"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              onClick={() => handleEditClick(b)}
+                              variant="ghost"
+                              size="icon"
+                              className={`h-8 w-8 rounded-lg transition-colors ${
+                                isEditing
+                                  ? "text-violet-500 hover:bg-violet-500/10 bg-violet-500/10"
+                                  : "text-zinc-400 hover:text-violet-500 hover:bg-violet-500/10 dark:text-zinc-500"
+                              }`}
+                              title="Edit budget limit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            
+                            <Button
+                              onClick={() => onRemoveBudget(b.category)}
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-lg text-zinc-400 hover:text-red-550 hover:bg-red-500/10 dark:text-zinc-500"
+                              title="Delete budget limit"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
 
                         <div className="space-y-2 mt-4">
